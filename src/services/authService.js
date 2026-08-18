@@ -4,7 +4,8 @@ import {
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword,
     onAuthStateChanged,
-    signOut
+    signOut,
+    signInAnonymously
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 
@@ -19,30 +20,41 @@ const generateUsername = (name) => {
     return name.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.floor(Math.random() * 1000);
 };
 
+const getTodayKey = () => new Date().toLocaleDateString("en-CA");
+
+const daysBetweenKeys = (fromKey, toKey) => {
+    if (!fromKey || !toKey) return Infinity;
+    const from = new Date(`${fromKey}T12:00:00`);
+    const to = new Date(`${toKey}T12:00:00`);
+    return Math.round((to - from) / (1000 * 60 * 60 * 24));
+};
+
+export const resolveStreakOnLoad = (currentStats = {}) => {
+    const today = getTodayKey();
+    const lastCompletionDate = currentStats.lastCompletionDate || currentStats.lastActiveDate || null;
+    const currentStreak = Number(currentStats.currentStreak || 0);
+
+    if (!lastCompletionDate) {
+        return { ...currentStats, currentStreak: 0 };
+    }
+
+    const gap = daysBetweenKeys(lastCompletionDate, today);
+    if (gap <= 1) {
+        return { ...currentStats, currentStreak };
+    }
+
+    return { ...currentStats, currentStreak: 0 };
+};
+
 export const checkAndUpdateStreak = async (uid, currentStats) => {
-    const today = new Date().toLocaleDateString('en-CA'); // Local YYYY-MM-DD
-    const stats = currentStats || { currentStreak: 1, bestStreak: 1, lastActiveDate: today, createdAt: new Date().toISOString() };
+    const resolvedStats = resolveStreakOnLoad(currentStats || {});
+    const needsPersist = Number(resolvedStats.currentStreak || 0) !== Number(currentStats?.currentStreak || 0);
 
-    if (stats.lastActiveDate === today) return stats; // Already logged in today
+    if (needsPersist) {
+        await setDoc(doc(db, "users", uid), { stats: resolvedStats }, { merge: true });
+    }
 
-    const lastActive = new Date(stats.lastActiveDate);
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    const isYesterday = lastActive.toLocaleDateString('en-CA') === yesterday.toLocaleDateString('en-CA');
-
-    const newCurrent = isYesterday ? (stats.currentStreak || 0) + 1 : 1;
-    const newBest = Math.max(newCurrent, stats.bestStreak || 1);
-
-    const newStats = { 
-        ...stats,
-        currentStreak: newCurrent, 
-        bestStreak: newBest, 
-        lastActiveDate: today 
-    };
-
-    await setDoc(doc(db, "users", uid), { stats: newStats }, { merge: true });
-    return newStats;
+    return resolvedStats;
 };
 
 const syncUserProfile = async (user, additionalData = {}) => {
@@ -113,6 +125,17 @@ export const logoutUser = async () => {
     }
 };
 
+export const signInAsGuest = async () => {
+    try {
+        const result = await signInAnonymously(auth);
+        const guestName = `Guest-${Math.floor(Math.random() * 10000)}`;
+        return await syncUserProfile(result.user, { displayName: guestName, isGuest: true });
+    } catch (error) {
+        console.error("Guest Sign-In Error:", error);
+        throw error;
+    }
+};
+
 export const getUserProfile = async (uid) => {
     try {
         const userRef = doc(db, "users", uid);
@@ -155,4 +178,31 @@ export const completeUserSetup = async (uid, profileData) => {
         console.error("Error updating profile:", error);
         throw error;
     }
+};
+
+export const recordTaskCompletionStreak = async (uid, currentStats = {}) => {
+    if (!uid) return currentStats;
+
+    const today = new Date().toLocaleDateString("en-CA");
+    const lastCompletionDate = currentStats.lastCompletionDate || currentStats.lastActiveDate;
+    const currentStreak = Number(currentStats.currentStreak || 0);
+    const bestStreak = Number(currentStats.bestStreak || 0);
+
+    if (lastCompletionDate === today) {
+        return currentStats;
+    }
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayKey = yesterday.toLocaleDateString("en-CA");
+    const nextCurrentStreak = lastCompletionDate === yesterdayKey ? currentStreak + 1 : 1;
+    const nextStats = {
+        ...currentStats,
+        currentStreak: nextCurrentStreak,
+        bestStreak: Math.max(bestStreak, nextCurrentStreak),
+        lastCompletionDate: today,
+    };
+
+    await setDoc(doc(db, "users", uid), { stats: nextStats }, { merge: true });
+    return nextStats;
 };

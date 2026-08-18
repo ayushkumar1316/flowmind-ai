@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Brain, Eye, EyeOff, Sparkles, CheckCircle2, ShieldCheck, Activity, AlertCircle, Loader2 } from "lucide-react";
-import { signInWithGoogle, emailLogin, emailSignUp, checkAuthState, getUserProfile } from "../services/authService";
+import { Brain, Eye, EyeOff, Sparkles, CheckCircle2, ShieldCheck, Activity, AlertCircle, Loader2, UserPlus } from "lucide-react";
+import { signInWithGoogle, emailLogin, emailSignUp, checkAuthState, getUserProfile, signInAsGuest } from "../services/authService";
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -110,6 +110,18 @@ function AuthPage() {
     setError(null);
     try {
       const userData = await signInWithGoogle();
+      handleAuthSuccess(userData);
+    } catch (err) {
+      setError(mapFirebaseError(err));
+      setIsLoading(false);
+    }
+  };
+
+  const handleGuestAuth = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const userData = await signInAsGuest();
       handleAuthSuccess(userData);
     } catch (err) {
       setError(mapFirebaseError(err));
@@ -286,6 +298,15 @@ function AuthPage() {
           >
             <GoogleIcon />
             Continue with Google
+          </button>
+
+          <button 
+            onClick={handleGuestAuth}
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-3 bg-white border border-purple-200 text-purple-700 font-bold py-4 rounded-2xl hover:border-purple-300 hover:bg-purple-50 hover:shadow-md transition-all active:scale-[0.98] disabled:opacity-60"
+          >
+            <UserPlus className="w-5 h-5" />
+            Continue as Guest
           </button>
 
           <div className="mt-8 text-center text-sm text-gray-600 font-medium">
