@@ -5,18 +5,25 @@ import { AreaChart, Area, BarChart, Bar, Cell, LabelList, XAxis, Tooltip, Respon
 import { 
     Brain, CheckCircle2, TrendingUp, Target, ShieldAlert, Activity, 
     Zap, ArrowRight, ShieldCheck, Flame, 
-    Award, Sparkles, BarChart3, Lock 
+    Award, Sparkles, BarChart3, Lock, Download
 } from "lucide-react";
 
 import { usePlan } from "../hooks/usePlan";
 import { useAuth } from "../hooks/useAuth";
+import { 
+    getRecentConfidenceHistory, 
+    getProductivityByDay, 
+    getCompletionStats,
+    exportInsightsData,
+    exportToCSV
+} from "../services/historyService";
 
 // --- TOOLTIP COMPONENTS (defined outside to avoid React warnings) ---
 const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
         return (
-            <div className="bg-white border border-[#E9DFD3] p-3 rounded-xl shadow-[0_8px_24px_rgba(80,62,38,0.08)]">
-                <p className="text-gray-400 text-[10px] font-black uppercase tracking-wider mb-1">{label}</p>
+            <div className="bg-white dark:bg-gray-900 border border-[#E9DFD3] dark:border-gray-700 p-3 rounded-xl shadow-[0_8px_24px_rgba(80,62,38,0.08)]">
+                <p className="text-gray-400 dark:text-gray-500 text-[10px] font-black uppercase tracking-wider mb-1">{label}</p>
                 <p className="text-purple-600 font-black text-sm">{`${payload[0].value}% Confidence`}</p>
             </div>
         );
@@ -29,7 +36,7 @@ const BarTooltip = ({ active, payload, label }) => {
         return (
             <div className="bg-gray-900 border border-gray-800 px-3 py-2 rounded-lg shadow-xl">
                 <p className="text-gray-400 text-[10px] font-black uppercase tracking-wider mb-0.5">{label}</p>
-                <p className="text-white font-black text-xs">{`${payload[0].value}% Productivity`}</p>
+                <p className="text-white font-black text-xs">{`${payload[0].value} task${payload[0].value !== 1 ? 's' : ''} completed`}</p>
             </div>
         );
     }
@@ -65,7 +72,7 @@ const AnimatedCounter = ({ value, duration = 1000, suffix = "" }) => {
 
 // --- HELPER COMPONENTS ---
 const EmptyStateFeatureChip = ({ icon: Icon, label }) => (
-    <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white/60 border border-[#E9DFD3] rounded-xl text-sm font-bold text-gray-600 shadow-[0_4px_14px_rgba(80,62,38,0.03)] cursor-default">
+    <div className="flex items-center gap-2.5 px-4 py-2.5 bg-white/60 dark:bg-gray-900/60 border border-[#E9DFD3] dark:border-gray-700 rounded-xl text-sm font-bold text-gray-600 shadow-[0_4px_14px_rgba(80,62,38,0.03)] cursor-default">
         <Icon className="w-4 h-4 text-purple-400" />
         {label}
         <Lock className="w-3 h-3 text-gray-300 ml-1" />
@@ -73,12 +80,12 @@ const EmptyStateFeatureChip = ({ icon: Icon, label }) => (
 );
 
 const LearningStateCard = ({ title, description, icon: Icon, className = "" }) => (
-    <div className={`bg-gray-50/50 rounded-[24px] border border-[#E9DFD3] border-dashed p-8 flex flex-col items-center justify-center text-center shadow-inner ${className}`}>
-        <div className="w-12 h-12 rounded-2xl bg-white border border-[#E9DFD3] shadow-sm flex items-center justify-center mb-4 text-purple-300">
+    <div className={`bg-gray-50/50 dark:bg-gray-800/50 rounded-[24px] border border-[#E9DFD3] dark:border-gray-700 border-dashed p-8 flex flex-col items-center justify-center text-center shadow-inner ${className}`}>
+        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-900 border border-[#E9DFD3] dark:border-gray-700 shadow-sm flex items-center justify-center mb-4 text-purple-300">
             <Icon className="w-6 h-6" />
         </div>
-        <h4 className="text-sm font-black text-gray-900 mb-2 tracking-tight">{title}</h4>
-        <p className="text-xs text-gray-500 font-medium max-w-[240px] leading-relaxed">{description}</p>
+        <h4 className="text-sm font-black text-gray-900 dark:text-gray-100 mb-2 tracking-tight">{title}</h4>
+        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium max-w-[240px] leading-relaxed">{description}</p>
     </div>
 );
 
@@ -90,13 +97,65 @@ function Insights() {
     // =====================================
     const navigate = useNavigate();
     const { plan, loadingPlan } = usePlan();
-    const { profile } = useAuth();
+    const { user, profile } = useAuth();
     const [currentTime] = useState(() => {
         const hour = new Date().getHours();
         if (hour < 12) return "GOOD MORNING";
         if (hour < 18) return "GOOD AFTERNOON";
         return "GOOD EVENING";
     });
+
+    const [confidenceHistory, setConfidenceHistory] = useState([]);
+    const [productivityByDay, setProductivityByDay] = useState([]);
+    const [completionStats, setCompletionStats] = useState({ totalCompleted: 0, dailyAverage: 0, streakDays: 0 });
+    const [isExporting, setIsExporting] = useState(false);
+    const [dateRange, setDateRange] = useState("week");
+
+    useEffect(() => {
+        if (!user?.uid) return;
+        let cancelled = false;
+        const fetchData = async () => {
+            try {
+                const days = dateRange === "month" ? 30 : 7;
+                const [conf, prod, stats] = await Promise.all([
+                    getRecentConfidenceHistory(user.uid, days),
+                    getProductivityByDay(user.uid),
+                    getCompletionStats(user.uid, days)
+                ]);
+                if (!cancelled) {
+                    setConfidenceHistory(conf);
+                    setProductivityByDay(prod);
+                    setCompletionStats(stats);
+                }
+            } catch (e) {
+                console.error("Failed to fetch history:", e);
+            }
+        };
+        fetchData();
+        return () => { cancelled = true; };
+    }, [user?.uid, plan?.updatedAt, dateRange]);
+
+    const handleExport = useCallback(async () => {
+        if (!user?.uid || isExporting) return;
+        setIsExporting(true);
+        try {
+            const data = await exportInsightsData(user.uid);
+            const csv = exportToCSV(data);
+            const blob = new Blob([csv], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `flowmind-insights-${new Date().toLocaleDateString("en-CA")}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error("Export failed:", e);
+        } finally {
+            setIsExporting(false);
+        }
+    }, [user, isExporting]);
 
     // =====================================
     // CORE DERIVATION ENGINE
@@ -150,12 +209,14 @@ function Insights() {
         else if (confScore < 75) riskLvl = "Moderate";
 
         // Generate Contextual Trends based on live completion delta
-        const trend = [
-            { name: "Start", score: Math.max(0, confScore - 15) },
-            { name: "Mid", score: Math.max(0, confScore - 8) },
-            { name: "Recent", score: Math.max(0, confScore - 3) },
-            { name: "Current", score: confScore }
-        ];
+        const trend = confidenceHistory.length > 0
+            ? confidenceHistory.map((entry) => ({ name: entry.date.slice(5), score: entry.score }))
+            : [
+                { name: "Start", score: Math.max(0, confScore - 15) },
+                { name: "Mid", score: Math.max(0, confScore - 8) },
+                { name: "Recent", score: Math.max(0, confScore - 3) },
+                { name: "Current", score: confScore }
+            ];
 
         // Realtime Prediction Engine based on actual remaining tasks
         const predictions = [];
@@ -200,21 +261,14 @@ function Insights() {
              nextAction = "All tasks completed. Generate a new plan to continue.";
         }
 
-        // A. Productivity by Day (Multi-color Bar Chart Data)
-        const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-        const dayColors = ["#a855f7", "#3b82f6", "#22c55e", "#f97316", "#ec4899", "#8b5cf6", "#06b6d4"];
-        const currentDayIndex = (new Date().getDay() + 6) % 7; // Monday = 0
-        
-        const derivedProductivity = daysOfWeek.map((day, idx) => {
-            let val = 0; 
-            // Distribute current velocity across the chart leading up to today
-            if (idx <= currentDayIndex) {
-                const variance = (idx % 2 === 0 ? 5 : -5); 
-                // Diminish past days slightly to show a trend, cap at current velocity
-                val = Math.min(100, Math.max(0, Math.round(completionVelocity - ((currentDayIndex - idx) * 5) + variance)));
-            }
-            return { day, value: val, fill: dayColors[idx] };
-        });
+        // A. Productivity by Day — use real data from Firestore
+        const derivedProductivity = productivityByDay.length > 0
+            ? productivityByDay
+            : (() => {
+                const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+                const dayColors = ["#a855f7", "#3b82f6", "#22c55e", "#f97316", "#ec4899", "#8b5cf6", "#06b6d4"];
+                return daysOfWeek.map((day, i) => ({ day, value: 0, fill: dayColors[i] }));
+            })();
 
         // B. Execution DNA (Derived traits)
         const highPriorityCount = rawTasks.filter(t => t.priority === "HIGH").length;
@@ -273,13 +327,14 @@ function Insights() {
             nextActionDirective: nextAction,
             intelligence: {
                 productivityByDay: derivedProductivity,
-                hasHistory: totalTasks > 0,
+                hasHistory: completionStats.totalCompleted > 0,
                 dna,
                 momentum: { state: momentumState, style: momentumColor },
-                achievements: supportedAchievements
+                achievements: supportedAchievements,
+                completionStats
             }
         };
-    }, [plan, profile]);
+    }, [plan, profile, confidenceHistory, productivityByDay, completionStats]);
 
     // =====================================
     // UI HELPERS
@@ -290,7 +345,7 @@ function Insights() {
         return <span className="px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-red-50 text-red-600 border border-red-100 shadow-sm">Critical</span>;
     }, []);
 
-    const cardStyle = "bg-white rounded-[24px] border border-[#E9DFD3] shadow-[0_14px_40px_rgba(80,62,38,0.03)] p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(80,62,38,0.06)] flex flex-col justify-between";
+    const cardStyle = "bg-white dark:bg-gray-900 rounded-[24px] border border-[#E9DFD3] dark:border-gray-700 shadow-[0_14px_40px_rgba(80,62,38,0.03)] p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(80,62,38,0.06)] flex flex-col justify-between";
 
     // =====================================
     // STATE RENDERERS
@@ -311,14 +366,14 @@ function Insights() {
                     <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-300/20 rounded-full blur-[120px] pointer-events-none transform-gpu will-change-transform"></div>
                     <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-green-200/20 rounded-full blur-[120px] pointer-events-none transform-gpu will-change-transform"></div>
 
-                    <div className="relative w-full max-w-[700px] bg-white border border-[#E9DFD3]/80 rounded-[32px] shadow-[0_20px_60px_rgba(80,62,38,0.06)] px-8 py-12 text-center animate-fade-in-up">
-                        <div className="w-20 h-20 mx-auto rounded-[24px] bg-purple-50 border border-purple-100 shadow-[0_0_25px_rgba(147,51,234,0.12)] flex items-center justify-center animate-float mb-6">
+                    <div className="relative w-full max-w-[700px] bg-white dark:bg-gray-900 border border-[#E9DFD3]/80 dark:border-gray-700 rounded-[32px] shadow-[0_20px_60px_rgba(80,62,38,0.06)] px-8 py-12 text-center animate-fade-in-up">
+                        <div className="w-20 h-20 mx-auto rounded-[24px] bg-purple-50 dark:bg-purple-900/30 border border-purple-100 shadow-[0_0_25px_rgba(147,51,234,0.12)] flex items-center justify-center animate-float mb-6">
                             <Brain className="w-10 h-10 text-purple-600" />
                         </div>
-                        <h2 className="text-3xl md:text-4xl font-black text-gray-950 tracking-tight mb-4">
+                        <h2 className="text-3xl md:text-4xl font-black text-gray-950 dark:text-gray-100 tracking-tight mb-4">
                             No AI Plan Yet
                         </h2>
-                        <p className="text-gray-500 mb-10 font-medium max-w-md mx-auto text-base">
+                        <p className="text-gray-500 dark:text-gray-400 mb-10 font-medium max-w-md mx-auto text-base">
                             Create your first AI Plan to unlock personalized analytics, predictions, execution intelligence and productivity insights.
                         </p>
                         
@@ -345,29 +400,29 @@ function Insights() {
     if (insightsData.state === "learning") {
         return (
             <>
-                <div className="relative min-h-screen text-gray-800 font-sans pb-16 overflow-x-hidden">
+                <div className="relative min-h-screen text-gray-800 dark:text-gray-100 font-sans pb-16 overflow-x-hidden">
                     <div className="absolute -top-20 left-1/4 w-[500px] h-[500px] bg-purple-300/10 blur-[120px] rounded-full pointer-events-none z-0 transform-gpu"></div>
                     <div className="absolute top-1/3 right-0 w-[400px] h-[400px] bg-blue-200/10 blur-[120px] rounded-full pointer-events-none z-0 transform-gpu"></div>
 
                     <div className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-6 lg:px-10 py-6 space-y-6">
                         {/* Header */}
-                        <div className="bg-gradient-to-br from-[#FDFBFE] to-[#FAF7F2] rounded-[28px] border border-[#E9DFD3] p-8 md:p-10 shadow-[0_8px_30px_rgba(80,62,38,0.03)] flex flex-col md:flex-row md:items-center justify-between gap-6 animate-fade-in-up">
+                        <div className="bg-gradient-to-br from-[#FDFBFE] to-[#FAF7F2] rounded-[28px] border border-[#E9DFD3] dark:border-gray-700 p-8 md:p-10 shadow-[0_8px_30px_rgba(80,62,38,0.03)] flex flex-col md:flex-row md:items-center justify-between gap-6 animate-fade-in-up">
                             <div className="max-w-xl">
                                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 block mb-2">{currentTime}</span>
-                                <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-950 mb-2">
+                                <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-950 dark:text-gray-100 mb-2">
                                     Execution Intelligence Center
                                 </h1>
-                                <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
                                     Your dashboard is initializing. Start executing your planner tasks to feed data into the prediction engine.
                                 </p>
                             </div>
                             <div className="flex flex-col gap-3 shrink-0">
-                                <div className="bg-white rounded-2xl p-4 border border-[#E9DFD3] shadow-2xs flex items-center gap-4">
+                                <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-[#E9DFD3] dark:border-gray-700 shadow-2xs flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100">
                                         <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-0.5">Status</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Status</p>
                                         <p className="text-sm font-black text-amber-600 leading-none mt-1">AI Learning...</p>
                                     </div>
                                 </div>
@@ -394,7 +449,7 @@ function Insights() {
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch animate-fade-in-up">
                             <div className={`${cardStyle} lg:col-span-7`}>
                                 <div className="mb-4">
-                                    <h3 className="text-lg font-black text-gray-900">Confidence Trend Momentum</h3>
+                                    <h3 className="text-lg font-black text-gray-900 dark:text-gray-100">Confidence Trend Momentum</h3>
                                 </div>
                                 <LearningStateCard 
                                     className="h-[200px]"
@@ -405,7 +460,7 @@ function Insights() {
                             </div>
                             <div className={`${cardStyle} lg:col-span-5`}>
                                 <div className="mb-4">
-                                    <h3 className="text-lg font-black text-gray-900">Prediction Engine</h3>
+                                    <h3 className="text-lg font-black text-gray-900 dark:text-gray-100">Prediction Engine</h3>
                                 </div>
                                 <LearningStateCard 
                                     className="h-[200px]"
@@ -419,7 +474,7 @@ function Insights() {
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch animate-fade-in-up">
                             <div className={`${cardStyle} lg:col-span-6`}>
                                 <div className="mb-4">
-                                    <h3 className="text-base font-black text-gray-900">Execution DNA Profile</h3>
+                                    <h3 className="text-base font-black text-gray-900 dark:text-gray-100">Execution DNA Profile</h3>
                                 </div>
                                 <LearningStateCard 
                                     className="h-[220px]"
@@ -430,7 +485,7 @@ function Insights() {
                             </div>
                             <div className={`${cardStyle} lg:col-span-6`}>
                                 <div className="mb-4">
-                                    <h3 className="text-base font-black text-gray-900">Productivity by Day</h3>
+                                    <h3 className="text-base font-black text-gray-900 dark:text-gray-100">Productivity by Day</h3>
                                 </div>
                                 <LearningStateCard 
                                     className="h-[220px]"
@@ -465,7 +520,7 @@ function Insights() {
                 .animate-fade-up { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
             `}</style>
 
-            <div className="relative min-h-screen text-gray-800 font-sans pb-16 overflow-x-hidden">
+            <div className="relative min-h-screen text-gray-800 dark:text-gray-100 font-sans pb-16 overflow-x-hidden">
                 {/* GPU Accelerated Ambient Glows */}
                 <div className="absolute -top-20 left-1/4 w-[500px] h-[500px] bg-purple-300/20 blur-[120px] rounded-full pointer-events-none z-0 transform-gpu will-change-transform"></div>
                 <div className="absolute top-1/3 right-0 w-[400px] h-[400px] bg-green-200/15 blur-[120px] rounded-full pointer-events-none z-0 transform-gpu will-change-transform"></div>
@@ -473,32 +528,50 @@ function Insights() {
                 <div className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-6 lg:px-10 py-6 space-y-6">
                     
                     {/* 1. HERO BANNER */}
-                    <div className="bg-gradient-to-br from-[#FDFBFE] to-[#FAF7F2] rounded-[28px] border border-[#E9DFD3] p-8 md:p-10 shadow-[0_8px_30px_rgba(80,62,38,0.03)] flex flex-col md:flex-row md:items-center justify-between gap-6 animate-fade-up">
+                    <div className="bg-gradient-to-br from-[#FDFBFE] to-[#FAF7F2] rounded-[28px] border border-[#E9DFD3] dark:border-gray-700 p-8 md:p-10 shadow-[0_8px_30px_rgba(80,62,38,0.03)] flex flex-col md:flex-row md:items-center justify-between gap-6 animate-fade-up">
                         <div className="max-w-xl">
                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 block mb-2">{currentTime}</span>
-                            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-950 mb-2">
+                            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-950 dark:text-gray-100 mb-2">
                                 Execution Intelligence Center
                             </h1>
-                            <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
                                 {insightsData.reportCard.summary}
                             </p>
                         </div>
                         <div className="flex flex-col gap-3 shrink-0">
-                            <div className="bg-white rounded-2xl p-4 border border-[#E9DFD3] shadow-2xs flex items-center gap-4">
+                            <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-[#E9DFD3] dark:border-gray-700 shadow-2xs flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 border border-green-100">
                                     <Target className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-0.5">Success Chance</p>
-                                    <p className="text-xl font-black text-gray-950 leading-none">{insightsData.overview.confidenceScore}%</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Success Chance</p>
+                                    <p className="text-xl font-black text-gray-950 dark:text-gray-100 leading-none">{insightsData.overview.confidenceScore}%</p>
                                 </div>
                             </div>
+                            <div className="flex bg-white dark:bg-gray-900 border border-[#E9DFD3] dark:border-gray-700 rounded-xl overflow-hidden">
+                                <button 
+                                    onClick={() => setDateRange("week")}
+                                    className={`flex-1 px-4 py-2 text-[10px] font-black uppercase tracking-wider transition-all ${dateRange === "week" ? "bg-purple-600 text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"}`}
+                                >This Week</button>
+                                <button 
+                                    onClick={() => setDateRange("month")}
+                                    className={`flex-1 px-4 py-2 text-[10px] font-black uppercase tracking-wider transition-all ${dateRange === "month" ? "bg-purple-600 text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"}`}
+                                >This Month</button>
+                            </div>
+                            <button 
+                                onClick={handleExport} 
+                                disabled={isExporting}
+                                className="flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-purple-600 bg-purple-50 dark:bg-purple-900/30 border border-purple-100 px-4 py-2 rounded-xl hover:bg-purple-100 transition-colors disabled:opacity-50"
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                {isExporting ? "Exporting..." : "Export CSV"}
+                            </button>
                             <div className="flex items-center justify-between gap-4 px-2">
                                 <div className="flex items-center gap-1.5">
                                     <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
                                     <span className="text-[10px] font-black uppercase tracking-widest text-purple-600">Live Sync</span>
                                 </div>
-                                <span className="text-[10px] font-bold text-gray-400">Updated Realtime</span>
+                                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500">Updated Realtime</span>
                             </div>
                         </div>
                     </div>
@@ -507,12 +580,12 @@ function Insights() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-up">
                         <div className={cardStyle}>
                             <div className="flex items-start justify-between mb-4">
-                                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100"><CheckCircle2 className="w-5 h-5" /></div>
+                                <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center border border-purple-100"><CheckCircle2 className="w-5 h-5" /></div>
                                 <span className="text-[10px] font-black uppercase tracking-widest text-green-600 bg-green-50 px-2 py-1 rounded-md shadow-sm">Verified</span>
                             </div>
                             <div>
-                                <span className="text-3xl font-black text-gray-950 block mb-1"><AnimatedCounter value={insightsData.overview.tasksCompleted} /></span>
-                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Tasks Completed</span>
+                                <span className="text-3xl font-black text-gray-950 dark:text-gray-100 block mb-1"><AnimatedCounter value={insightsData.overview.tasksCompleted} /></span>
+                                <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Tasks Completed</span>
                             </div>
                         </div>
 
@@ -522,19 +595,19 @@ function Insights() {
                                 <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-1 rounded-md shadow-sm">Pacing</span>
                             </div>
                             <div>
-                                <span className="text-3xl font-black text-gray-950 block mb-1"><AnimatedCounter value={insightsData.overview.completionRate} suffix="%" /></span>
-                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Completion Velocity</span>
+                                <span className="text-3xl font-black text-gray-950 dark:text-gray-100 block mb-1"><AnimatedCounter value={insightsData.overview.completionRate} suffix="%" /></span>
+                                <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Completion Velocity</span>
                             </div>
                         </div>
 
                         <div className={cardStyle}>
                             <div className="flex items-start justify-between mb-4">
                                 <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center border border-green-100"><Activity className="w-5 h-5" /></div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 shadow-sm">Index</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded-md border border-gray-100 dark:border-gray-700 shadow-sm">Index</span>
                             </div>
                             <div>
-                                <span className="text-3xl font-black text-gray-950 block mb-1"><AnimatedCounter value={insightsData.overview.confidenceScore} suffix="%" /></span>
-                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Execution Confidence</span>
+                                <span className="text-3xl font-black text-gray-950 dark:text-gray-100 block mb-1"><AnimatedCounter value={insightsData.overview.confidenceScore} suffix="%" /></span>
+                                <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Execution Confidence</span>
                             </div>
                         </div>
 
@@ -544,8 +617,8 @@ function Insights() {
                                 <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 px-2 py-1 rounded-md shadow-sm">Buffer</span>
                             </div>
                             <div>
-                                <span className="text-3xl font-black text-gray-950 block mb-1">{insightsData.overview.currentRisk}</span>
-                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Current Risk Level</span>
+                                <span className="text-3xl font-black text-gray-950 dark:text-gray-100 block mb-1">{insightsData.overview.currentRisk}</span>
+                                <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Current Risk Level</span>
                             </div>
                         </div>
                     </div>
@@ -555,11 +628,11 @@ function Insights() {
                         <div className={`${cardStyle} lg:col-span-7`}>
                             <div className="flex items-center justify-between mb-4">
                                 <div>
-                                    <span className="text-[11px] font-black uppercase tracking-widest text-gray-400 block mb-0.5">Execution Pacing</span>
-                                    <h3 className="text-lg font-black text-gray-950">Confidence Trend Momentum</h3>
+                                    <span className="text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 block mb-0.5">Execution Pacing</span>
+                                    <h3 className="text-lg font-black text-gray-950 dark:text-gray-100">Confidence Trend Momentum</h3>
                                 </div>
                                 <span className="text-[10px] font-black text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100 uppercase tracking-wider shadow-sm">
-                                    Live Derived
+                                    {confidenceHistory.length > 0 ? "Real Data" : "Live Derived"}
                                 </span>
                             </div>
                             
@@ -581,15 +654,15 @@ function Insights() {
                         </div>
 
                         <div className={`${cardStyle} lg:col-span-5 !p-0 overflow-hidden`}>
-                            <div className="p-6 border-b border-[#E9DFD3] flex items-center justify-between bg-[#FAF8F4]/50">
-                                <div className="flex items-center gap-2"><Brain className="w-4 h-4 text-purple-600" /><h3 className="text-sm font-black text-gray-950 uppercase tracking-wider">Prediction Engine</h3></div>
-                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">AI Forecast</span>
+                            <div className="p-6 border-b border-[#E9DFD3] dark:border-gray-700 flex items-center justify-between bg-[#FAF8F4]/50 dark:bg-gray-800/50">
+                                <div className="flex items-center gap-2"><Brain className="w-4 h-4 text-purple-600" /><h3 className="text-sm font-black text-gray-950 dark:text-gray-100 uppercase tracking-wider">Prediction Engine</h3></div>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">AI Forecast</span>
                             </div>
                             <div className="p-6 space-y-3 flex-1 flex flex-col justify-center">
                                 {insightsData.predictionEngine.length > 0 ? (
                                     insightsData.predictionEngine.map((item, idx) => (
-                                        <div key={idx} className="p-3.5 bg-[#FAF8F4] rounded-xl border border-[#E9DFD3] flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-3xs hover:border-purple-200 transition-colors">
-                                            <span className="text-xs font-bold text-gray-800 truncate flex-1">{item.title}</span>
+                                        <div key={idx} className="p-3.5 bg-[#FAF8F4] dark:bg-gray-800 rounded-xl border border-[#E9DFD3] dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-3xs hover:border-purple-200 transition-colors">
+                                            <span className="text-xs font-bold text-gray-800 dark:text-gray-100 truncate flex-1">{item.title}</span>
                                             <div className="flex items-center gap-2 shrink-0">
                                                 <span className="text-[10px] font-black text-purple-600 hidden sm:inline-block">{item.probability}</span>
                                                 {getStatusBadge(item.status)}
@@ -597,8 +670,8 @@ function Insights() {
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="flex-1 flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200 p-6 text-center">
-                                        <p className="text-xs text-gray-400 font-bold">All active tasks completed.</p>
+                                    <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 p-6 text-center">
+                                        <p className="text-xs text-gray-400 dark:text-gray-500 font-bold">All active tasks completed.</p>
                                     </div>
                                 )}
                             </div>
@@ -610,10 +683,10 @@ function Insights() {
                         <div className={`${cardStyle} lg:col-span-6`}>
                             <div className="flex items-center justify-between mb-5">
                                 <div>
-                                    <h3 className="text-base font-black text-gray-950 tracking-tight">Execution DNA Profile</h3>
-                                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">Derived from verified planner ledger patterns</p>
+                                    <h3 className="text-base font-black text-gray-950 dark:text-gray-100 tracking-tight">Execution DNA Profile</h3>
+                                    <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mt-0.5">Derived from verified planner ledger patterns</p>
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest bg-purple-50 text-purple-600 border border-purple-100 px-3 py-1 rounded-full shadow-sm hidden sm:inline-block">AI Evaluated</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest bg-purple-50 dark:bg-purple-900/30 text-purple-600 border border-purple-100 px-3 py-1 rounded-full shadow-sm hidden sm:inline-block">AI Evaluated</span>
                             </div>
 
                             <div className="space-y-3.5 my-auto">
@@ -625,9 +698,9 @@ function Insights() {
                                     { label: "Habit Discipline", val: insightsData.intelligence.dna.discipline, color: "bg-indigo-500" },
                                 ].map((trait, idx) => (
                                     <div key={idx} className="space-y-1">
-                                        <div className="flex justify-between text-xs font-black text-gray-800">
+                                        <div className="flex justify-between text-xs font-black text-gray-800 dark:text-gray-100">
                                             <span>{trait.label}</span>
-                                            <span className="font-mono text-gray-500">{trait.val}%</span>
+                                            <span className="font-mono text-gray-500 dark:text-gray-400">{trait.val}%</span>
                                         </div>
                                         <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
                                             <div className={`${trait.color} h-full rounded-full transition-all duration-1000 ease-out`} style={{ width: `${trait.val}%` }}></div>
@@ -640,10 +713,12 @@ function Insights() {
                         <div className={`${cardStyle} lg:col-span-6`}>
                             <div className="flex items-center justify-between mb-2">
                                 <div>
-                                    <h3 className="text-sm font-black text-gray-950 uppercase tracking-wider flex items-center gap-1.5"><BarChart3 className="w-4 h-4 text-purple-600"/> Productivity by Day</h3>
-                                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">7-Day execution consistency</p>
+                                    <h3 className="text-sm font-black text-gray-950 dark:text-gray-100 uppercase tracking-wider flex items-center gap-1.5"><BarChart3 className="w-4 h-4 text-purple-600"/> Productivity by Day</h3>
+                                    <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mt-0.5">7-Day execution consistency ({completionStats.totalCompleted} tasks this week)</p>
                                 </div>
-                                <span className="text-[9px] font-black uppercase tracking-widest bg-gray-50 text-gray-500 px-2 py-0.5 rounded border border-gray-100 shadow-sm hidden sm:inline-block">Ledger</span>
+                                <span className="text-[9px] font-black uppercase tracking-widest bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded border border-gray-100 dark:border-gray-700 shadow-sm hidden sm:inline-block">
+                                    {completionStats.totalCompleted > 0 ? "Verified" : "Ledger"}
+                                </span>
                             </div>
 
                             <div className="w-full flex-1 min-h-[220px] pt-4">
@@ -659,7 +734,7 @@ function Insights() {
                                                     className="transition-all duration-300 hover:brightness-110 hover:drop-shadow-md cursor-pointer"
                                                 />
                                             ))}
-                                            <LabelList dataKey="value" position="top" formatter={(val) => `${val}%`} style={{ fontSize: '10px', fontWeight: 'bold', fill: '#6b7280' }} />
+                                            <LabelList dataKey="value" position="top" formatter={(val) => val > 0 ? `${val}` : ''} style={{ fontSize: '10px', fontWeight: 'bold', fill: '#6b7280' }} />
                                         </Bar>
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -670,16 +745,16 @@ function Insights() {
                     {/* 5. MERGED EXECUTIVE REVIEW CARD + NEXT AI ACTION */}
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch animate-fade-up">
                         <div className={`${cardStyle} lg:col-span-7 !p-0 overflow-hidden`}>
-                            <div className="p-6 border-b border-[#E9DFD3] flex items-center justify-between bg-[#FAF8F4]">
-                                <div className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-purple-600" /><h3 className="text-sm font-black text-gray-950 uppercase tracking-wider">Executive Review & Reflection</h3></div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100 shadow-sm hidden sm:inline-block">AI Conf: {insightsData.reportCard.aiConfidence}%</span>
+                            <div className="p-6 border-b border-[#E9DFD3] dark:border-gray-700 flex items-center justify-between bg-[#FAF8F4] dark:bg-gray-800">
+                                <div className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-purple-600" /><h3 className="text-sm font-black text-gray-950 dark:text-gray-100 uppercase tracking-wider">Executive Review & Reflection</h3></div>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-purple-600 bg-purple-50 dark:bg-purple-900/30 px-2.5 py-1 rounded-full border border-purple-100 shadow-sm hidden sm:inline-block">AI Conf: {insightsData.reportCard.aiConfidence}%</span>
                             </div>
                             
                             <div className="p-6 space-y-6 flex-1 flex flex-col justify-between">
                                 <div>
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-black text-gray-950 uppercase tracking-wider">{insightsData.reportCard.tierLabel}</span>
-                                        <span className="text-xs font-mono font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-100">Grade {insightsData.reportCard.grade}</span>
+                                        <span className="text-xs font-black text-gray-950 dark:text-gray-100 uppercase tracking-wider">{insightsData.reportCard.tierLabel}</span>
+                                        <span className="text-xs font-mono font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded border border-purple-100">Grade {insightsData.reportCard.grade}</span>
                                     </div>
                                     <p className="text-xs text-gray-600 font-medium leading-relaxed">{insightsData.reportCard.summary}</p>
                                 </div>
@@ -687,20 +762,29 @@ function Insights() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="p-3.5 rounded-xl bg-green-50/60 border border-green-100">
                                         <span className="text-[9px] font-black uppercase tracking-widest text-green-700 block mb-0.5">Top Strength</span>
-                                        <span className="text-xs font-black text-gray-900">{insightsData.reportCard.topStrength}</span>
+                                        <span className="text-xs font-black text-gray-900 dark:text-gray-100">{insightsData.reportCard.topStrength}</span>
                                     </div>
                                     <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-100">
                                         <span className="text-[9px] font-black uppercase tracking-widest text-amber-700 block mb-0.5">Needs Improvement</span>
-                                        <span className="text-xs font-black text-gray-900">{insightsData.reportCard.needsAttention}</span>
+                                        <span className="text-xs font-black text-gray-900 dark:text-gray-100">{insightsData.reportCard.needsAttention}</span>
                                     </div>
                                 </div>
 
-                                <div className="pt-4 border-t border-gray-100 space-y-3">
+                                <div className="pt-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
                                     <div className="flex items-start gap-2.5">
                                         <Brain className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
                                         <div>
-                                            <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block">AI Coach Advice</span>
-                                            <p className="text-xs font-bold text-gray-800 italic mt-0.5">"Maintain this pace to ensure goals are hit without late-week scrambling."</p>
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 block">AI Coach Advice</span>
+                                            <p className="text-xs font-bold text-gray-800 dark:text-gray-100 italic mt-0.5">
+                                                {confidenceHistory.length > 0
+                                                    ? `"Based on ${confidenceHistory.length} data points, your execution is ${
+                                                        insightsData.overview.confidenceScore >= 75 
+                                                            ? "trending upward. Keep the momentum!" 
+                                                            : "recovering. Focus on high-priority tasks first."
+                                                      }"`
+                                                    : `"Maintain this pace to ensure goals are hit without late-week scrambling."`
+                                                }
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -710,19 +794,19 @@ function Insights() {
                         <div className={`${cardStyle} lg:col-span-5 bg-gradient-to-br from-[#FDFBFE] to-[#FAF7F2]`}>
                             <div>
                                 <div className="flex items-center justify-between mb-4">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-purple-600 bg-purple-50 px-2.5 py-1 rounded-md border border-purple-100 shadow-sm">Target Action</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-purple-600 bg-purple-50 dark:bg-purple-900/30 px-2.5 py-1 rounded-md border border-purple-100 shadow-sm">Target Action</span>
                                 </div>
-                                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Recommended Directive</h3>
-                                <h2 className="text-xl md:text-2xl font-black text-gray-950 leading-snug">
+                                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Recommended Directive</h3>
+                                <h2 className="text-xl md:text-2xl font-black text-gray-950 dark:text-gray-100 leading-snug">
                                     {insightsData.nextActionDirective}
                                 </h2>
                             </div>
                             
-                            <div className="pt-6 mt-6 border-t border-[#E9DFD3]/80 flex flex-col gap-3">
+                            <div className="pt-6 mt-6 border-t border-[#E9DFD3]/80 dark:border-gray-700 flex flex-col gap-3">
                                 <button onClick={() => navigate('/tasks')} className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black text-xs uppercase tracking-widest py-3.5 rounded-xl transition-all shadow-md shadow-purple-500/10 flex items-center justify-center gap-2 active:scale-95">
                                     Execute Action <ArrowRight className="w-4 h-4" />
                                 </button>
-                                <span className="text-[10px] font-bold text-gray-400 text-center flex items-center justify-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-green-600"/> Secures today's productivity streak</span>
+                                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 text-center flex items-center justify-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-green-600"/> Secures today's productivity streak</span>
                             </div>
                         </div>
                     </div>
@@ -731,22 +815,22 @@ function Insights() {
                     <div className={`${cardStyle} animate-fade-up`}>
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
-                                <span className="text-[11px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-1.5"><Activity className="w-4 h-4 text-green-600"/> Velocity Pacing Engine</span>
+                                <span className="text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 flex items-center gap-1.5"><Activity className="w-4 h-4 text-green-600"/> Velocity Pacing Engine</span>
                                 <div className="flex flex-wrap items-center gap-3 mt-1">
-                                    <span className="text-2xl font-black text-gray-950">Current Momentum</span>
+                                    <span className="text-2xl font-black text-gray-950 dark:text-gray-100">Current Momentum</span>
                                     <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded border shadow-sm ${insightsData.intelligence.momentum.style}`}>
                                         {insightsData.intelligence.momentum.state}
                                     </span>
                                 </div>
                             </div>
-                            <div className="w-full md:w-64 bg-gray-100 h-2.5 rounded-full overflow-hidden p-0.5 border border-gray-200 shrink-0 transform-gpu">
+                            <div className="w-full md:w-64 bg-gray-100 h-2.5 rounded-full overflow-hidden p-0.5 border border-gray-200 dark:border-gray-700 shrink-0 transform-gpu">
                                 <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${Math.max(20, insightsData.overview.confidenceScore)}%` }}></div>
                             </div>
                         </div>
 
                         {insightsData.intelligence.achievements.length > 0 && (
-                            <div className="mt-6 pt-5 border-t border-gray-100 flex flex-wrap items-center gap-2">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 mr-2 flex items-center gap-1"><Award className="w-3.5 h-3.5 text-amber-500"/> Unlocked Badges:</span>
+                            <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-700 flex flex-wrap items-center gap-2">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 mr-2 flex items-center gap-1"><Award className="w-3.5 h-3.5 text-amber-500"/> Unlocked Badges:</span>
                                 {insightsData.intelligence.achievements.map((badge) => {
                                     const IconG = badge.icon;
                                     return (
