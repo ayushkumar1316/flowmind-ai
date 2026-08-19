@@ -257,7 +257,9 @@ function TaskBoard() {
         setTimeout(() => {
             setCompletingId(null);
             setLocalTasks(prev => {
-                const updatedTasks = prev.map(t => {
+                const safePrev = Array.isArray(prev) ? prev : planTasks;
+                if (!safePrev) return prev;
+                const updatedTasks = safePrev.map(t => {
                     if (t.id === taskId) {
                         return {
                             ...t,
@@ -304,7 +306,9 @@ function TaskBoard() {
 
     const handleUndoComplete = useCallback((taskId) => {
         setLocalTasks(prev => {
-            const updated = prev.map(t => {
+            const safePrev = Array.isArray(prev) ? prev : planTasks;
+            if (!safePrev) return prev;
+            const updated = safePrev.map(t => {
                 if (t.id !== taskId) return t;
                 return {
                     ...t,
@@ -323,7 +327,9 @@ function TaskBoard() {
     const handleIncrementRepeating = useCallback((taskId) => {
         setLocalTasks(prev => {
             let shouldComplete = false;
-            const updated = prev.map(t => {
+            const safePrev = Array.isArray(prev) ? prev : planTasks;
+            if (!safePrev) return prev;
+            const updated = safePrev.map(t => {
                 if (t.id === taskId) {
                     const nextCount = (t.currentCount || 0) + 1;
                     if (nextCount >= t.targetCount) {

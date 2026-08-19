@@ -44,9 +44,10 @@ export const normalizeDashboardTask = (task, index = 0) => {
 };
 
 export const getPlanTasks = (plan) => {
-  if (Array.isArray(plan?.taskBoardTasks)) return plan.taskBoardTasks.map(normalizeDashboardTask);
-  if (Array.isArray(plan?.todayPlan)) return plan.todayPlan.map(normalizeDashboardTask);
-  if (Array.isArray(plan?.strictlyDoToday)) return plan.strictlyDoToday.map(normalizeDashboardTask);
+  if (!plan) return [];
+  if (Array.isArray(plan.taskBoardTasks)) return plan.taskBoardTasks.map(normalizeDashboardTask);
+  if (Array.isArray(plan.todayPlan)) return plan.todayPlan.map(normalizeDashboardTask);
+  if (Array.isArray(plan.strictlyDoToday)) return plan.strictlyDoToday.map(normalizeDashboardTask);
   return [];
 };
 
@@ -137,13 +138,14 @@ export const buildCalendarMeta = (viewDate, tasks = [], referenceDate = new Date
   const today = todayDate.getDate();
   const isCurrentMonth = todayDate.getFullYear() === year && todayDate.getMonth() === month;
   const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInMonth = new Date(year + 1, 0, 0).getDate();
   const deadlineDays = new Set();
   const completedDays = new Set();
 
   const refForDeadlines = new Date(referenceDate);
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
 
-  tasks.forEach((task) => {
+  safeTasks.forEach((task) => {
     if (task.status === "Completed") {
       const completionKey = getTaskCompletionKey(task);
       if (completionKey) {

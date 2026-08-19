@@ -100,11 +100,11 @@ function Dashboard() {
 
     const metrics = useMemo(() => buildTaskMetrics(plan, profile), [plan, profile]);
     const {
-        tasks,
-        todayTasks,
+        tasks = [],
+        todayTasks = [],
         focusTask,
-        upcomingDeadlines,
-        completedToday,
+        upcomingDeadlines = [],
+        completedToday = [],
         completedTodayCount,
         totalTaskCount,
         completedTaskCount,
@@ -112,7 +112,7 @@ function Dashboard() {
         successChance: successScore,
         productivityStreak: currentStreak,
         onlyRepeatingHabitsRemain,
-    } = metrics;
+    } = metrics || {};
 
     const userName = getDisplayName(profile, user);
     const [displayScore, setDisplayScore] = useState(0);
@@ -191,7 +191,7 @@ function Dashboard() {
         setSyncingTaskId(taskId);
         const todayKey = getTodayKey();
         try {
-            const sourceTasks = Array.isArray(plan.taskBoardTasks) ? plan.taskBoardTasks : tasks.map((task) => task.raw);
+            const sourceTasks = Array.isArray(plan?.taskBoardTasks) ? plan.taskBoardTasks : (tasks || []).map((task) => task.raw);
             const updatedTasks = sourceTasks.map((task, index) => {
                 const normalized = normalizeDashboardTask(task, index);
                 if (normalized.id !== taskId) return task;
@@ -287,7 +287,7 @@ function Dashboard() {
             tags: [],
         };
 
-        const sourceTasks = Array.isArray(plan.taskBoardTasks) ? plan.taskBoardTasks : tasks.map(t => t.raw);
+        const sourceTasks = Array.isArray(plan?.taskBoardTasks) ? plan.taskBoardTasks : (tasks || []).map(t => t.raw);
         const updatedTasks = [...sourceTasks, newTask];
 
         try {
