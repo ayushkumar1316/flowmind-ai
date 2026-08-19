@@ -66,7 +66,8 @@ function AIPlanner() {
     const [prompt, setPrompt] = useState("");
     const [response, setResponse] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [toastMessage, setToastMessage] = useState("");
+    // eslint-disable-next-line no-unused-vars
+    const [_toastMessage, setToastMessage] = useState("");
 
     // Pass 4 Execution Workspace Sync & Satisfaction States
     const [syncState, setSyncState] = useState("idle");
@@ -92,8 +93,7 @@ function AIPlanner() {
     // =====================================
     const handleVoiceInput = useCallback(() => {
         if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
-            setToastMessage("Voice recognition is not supported in this browser.");
-            setTimeout(() => setToastMessage(""), 3000);
+            console.warn("Voice recognition is not supported in this browser.");
             return;
         }
         if (isListening) {
@@ -119,14 +119,20 @@ function AIPlanner() {
     // =====================================
     // STEP TIMER (AI PROGRESSIVE OVERLAY)
     // =====================================
+    const prevLoadingRef = useRef(loading);
     useEffect(() => {
-        let interval;
-        if (loading) {
+        const wasLoading = prevLoadingRef.current;
+        prevLoadingRef.current = loading;
+        
+        if (!loading && wasLoading) {
             setThinkingStep(0);
-            interval = setInterval(() => {
-                setThinkingStep((prev) => prev < THINKING_STEPS.length - 1 ? prev + 1 : prev);
-            }, 1200);
+            return;
         }
+        if (!loading) return;
+        
+        const interval = setInterval(() => {
+            setThinkingStep((prev) => prev < THINKING_STEPS.length - 1 ? prev + 1 : prev);
+        }, 1200);
         return () => clearInterval(interval);
     }, [loading]);
 
@@ -334,22 +340,28 @@ Please establish a comprehensive execution schedule utilizing these specificatio
 
     // Animated counting logic for the metrics ring
     const [displayScore, setDisplayScore] = useState(0);
+    const displayScoreRef = useRef(0);
+    const isInitialRender = useRef(true);
     useEffect(() => {
         if (response) {
-            let start = displayScore;
+            const start = displayScoreRef.current;
             const duration = 800;
             const startTime = performance.now();
             const animate = (time) => {
                 const elapsed = time - startTime;
                 const progress = Math.min(elapsed / duration, 1);
                 const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-                setDisplayScore(Math.round(start + (dynamicScoreVal - start) * easeOutQuart));
+                const nextScore = Math.round(start + (dynamicScoreVal - start) * easeOutQuart);
+                displayScoreRef.current = nextScore;
+                setDisplayScore(nextScore);
                 if (progress < 1) requestAnimationFrame(animate);
             };
             requestAnimationFrame(animate);
-        } else {
+        } else if (!isInitialRender.current) {
+            displayScoreRef.current = 0;
             setDisplayScore(0);
         }
+        isInitialRender.current = false;
     }, [dynamicScoreVal, response]);
 
     const getStatusText = useCallback((score) => {
@@ -368,24 +380,39 @@ Please establish a comprehensive execution schedule utilizing these specificatio
     const [typedMessage, setTypedMessage] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const fullAgentMessage = useMemo(() => response ? `Nice. Here's today's execution strategy. ${response.agentMessage || "Your plan is optimized and ready for execution. Stay focused."}` : "", [response]);
+    const prevResponseRef = useRef(response);
+    const typingInitializedRef = useRef(false);
 
     useEffect(() => {
-        if (response) {
+        const hadResponse = Boolean(prevResponseRef.current);
+        const hasResponse = Boolean(response);
+        prevResponseRef.current = response;
+
+        if (!hasResponse && hadResponse) {
             setTypedMessage("");
-            setIsTyping(true);
-            let i = 0;
-            let currentText = "";
-            const interval = setInterval(() => {
-                currentText += fullAgentMessage.charAt(i);
-                setTypedMessage(currentText);
-                i++;
-                if (i >= fullAgentMessage.length) {
-                    clearInterval(interval);
-                    setIsTyping(false);
-                }
-            }, 14);
-            return () => clearInterval(interval);
+            setIsTyping(false);
+            typingInitializedRef.current = false;
+            return;
         }
+        if (!hasResponse) return;
+
+        if (typingInitializedRef.current) return;
+        typingInitializedRef.current = true;
+
+        let i = 0;
+        let currentText = "";
+        setTypedMessage("");
+        setIsTyping(true);
+        const interval = setInterval(() => {
+            currentText += fullAgentMessage.charAt(i);
+            setTypedMessage(currentText);
+            i++;
+            if (i >= fullAgentMessage.length) {
+                clearInterval(interval);
+                setIsTyping(false);
+            }
+        }, 14);
+        return () => clearInterval(interval);
     }, [fullAgentMessage, response]);
 
     const progressPercentage = parsedTasks.length > 0 ? Math.round(((currentTaskIndex) / parsedTasks.length) * 100) : 0;

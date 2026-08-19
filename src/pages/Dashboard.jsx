@@ -1,43 +1,20 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { savePlan, subscribeToPlan } from "../services/firebaseService";
-import { Brain, CalendarDays } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
-
-const priorityWeights = { HIGH: 3, MEDIUM: 2, LOW: 1 };
-
-const parseDuration = (value = "") => {
-    const text = String(value).toLowerCase();
-    const number = parseFloat(text) || 0;
-    if (text.includes("min")) return number / 60;
-    return number;
-};
-
-const normalizePriority = (priority) => (priority ? priority.toUpperCase() : "UNSET");
-
-const toTask = (task, index) => {
-    const title = typeof task === "string" ? task : task?.title || task?.task || "Untitled task";
-    return {
-        id: task?.id ?? `today-${index}`,
-        title,
-        status: task?.status || (task?.completed ? "Completed" : "To Do"),
-        priority: normalizePriority(task?.priority),
-        deadlineDays: Number.isFinite(Number(task?.deadlineDays ?? task?.daysRemaining)) ? Number(task?.deadlineDays ?? task?.daysRemaining) : null,
-        estimatedTime: task?.estimatedTime || task?.duration || task?.timeEstimate || "",
-        isRepeating: Boolean(task?.isRepeating),
-        currentCount: Number(task?.currentCount || 0),
-        targetCount: Number(task?.targetCount || 0),
-        createdAt: task?.createdAt || task?.id || index,
-        raw: task,
-    };
-};
-
-const getConfidenceMeta = (score) => {
-    const value = Number(score) || 0;
-    if (value >= 80) return { text: "You're doing great!", badge: "ON TRACK", badgeColor: "bg-green-50 text-green-700 border-green-200", color: "bg-green-500", hex: "#22c55e" };
-    if (value >= 60) return { text: "Moderate risk. Keep pushing.", badge: "AT RISK", badgeColor: "bg-yellow-50 text-yellow-700 border-yellow-200", color: "bg-yellow-500", hex: "#eab308" };
-    return { text: "Critical risk of missing goals.", badge: "CRITICAL", badgeColor: "bg-red-50 text-red-700 border-red-200", color: "bg-red-500", hex: "#ef4444" };
-};
+import { savePlan } from "../services/firebaseService";
+import { recordTaskCompletionStreak } from "../services/authService";
+import { Brain, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { usePlan } from "../hooks/usePlan";
+import {
+    buildCalendarMeta,
+    buildTaskMetrics,
+    getConfidenceMeta,
+    getDisplayName,
+    getSyncStatus,
+    getTodayKey,
+    normalizeDashboardTask,
+    normalizePriority,
+} from "../utils/dashboardMetrics";
 
 const getDeadlineStackStyles = (days) => {
     if (days <= 3) return "text-red-600";
@@ -76,15 +53,21 @@ const CoachMessage = memo(function CoachMessage({ message }) {
 function Dashboard() {
     const [currentTime, setCurrentTime] = useState("");
     const [currentDate, setCurrentDate] = useState("");
-    const [nowMs, setNowMs] = useState(0);
-    const [plan, setPlan] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [nowMs, setNowMs] = useState(() => Date.now());
     const [syncingTaskId, setSyncingTaskId] = useState(null);
     const [toastMessage, setToastMessage] = useState("");
     const toastTimeoutRef = useRef(null);
 
+    const [calendarView, setCalendarView] = useState(() => {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), 1);
+    });
+    const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
+    const [calendarTransition, setCalendarTransition] = useState("");
+
     const navigate = useNavigate();
-    const { profile } = useAuth();
+    const { user, profile, updateProfileStats } = useAuth();
+    const { plan, loadingPlan: isLoading } = usePlan();
 
     useEffect(() => {
         const updateClock = () => {
@@ -104,142 +87,58 @@ function Dashboard() {
         return () => clearInterval(intervalId);
     }, []);
 
-    useEffect(() => {
-        let isActive = true;
-        const unsubscribe = subscribeToPlan((realtimePlan) => {
-            if (!isActive) return;
-            setPlan(realtimePlan);
-            setIsLoading(false);
-        });
-
-        if (!unsubscribe) {
-            queueMicrotask(() => {
-                if (isActive) setIsLoading(false);
-            });
-        }
-
-        return () => {
-            isActive = false;
-            if (unsubscribe) unsubscribe();
-        };
-    }, []);
-
     useEffect(() => () => {
         if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     }, []);
 
-    const tasks = useMemo(() => {
-        if (!plan) return [];
-        if (Array.isArray(plan.taskBoardTasks)) return plan.taskBoardTasks.map(toTask);
-        if (Array.isArray(plan.todayPlan)) return plan.todayPlan.map(toTask);
-        if (Array.isArray(plan.strictlyDoToday)) return plan.strictlyDoToday.map(toTask);
-        return [];
-    }, [plan]);
+    const metrics = useMemo(() => buildTaskMetrics(plan, profile), [plan, profile]);
+    const {
+        tasks,
+        todayTasks,
+        focusTask,
+        upcomingDeadlines,
+        completedToday,
+        completedTodayCount,
+        totalTaskCount,
+        completedTaskCount,
+        progressPercentage,
+        successChance: successScore,
+        productivityStreak: currentStreak,
+        onlyRepeatingHabitsRemain,
+    } = metrics;
 
-    const activeTasks = useMemo(() => {
-        return tasks
-            .filter((task) => task.status !== "Completed")
-            .sort((a, b) => {
-                const priorityDelta = (priorityWeights[b.priority] || 0) - (priorityWeights[a.priority] || 0);
-                if (priorityDelta) return priorityDelta;
-
-                const deadlineDelta = (a.deadlineDays ?? 999) - (b.deadlineDays ?? 999);
-                if (deadlineDelta) return deadlineDelta;
-
-                const durationDelta = parseDuration(a.estimatedTime) - parseDuration(b.estimatedTime);
-                if (durationDelta) return durationDelta;
-
-                return String(a.createdAt).localeCompare(String(b.createdAt));
-            });
-    }, [tasks]);
-
-    const completedTasks = useMemo(() => tasks.filter((task) => task.status === "Completed"), [tasks]);
-    const executionTasks = useMemo(() => activeTasks.filter((task) => !task.isRepeating), [activeTasks]);
-    const todayTasks = useMemo(() => executionTasks.slice(0, 5), [executionTasks]);
-    const focusTask = executionTasks[0] || null;
-    const upcomingDeadlines = useMemo(() => {
-        return activeTasks
-            .filter((task) => task.deadlineDays !== null)
-            .sort((a, b) => {
-                const priorityDelta = (priorityWeights[b.priority] || 0) - (priorityWeights[a.priority] || 0);
-                if (priorityDelta) return priorityDelta;
-
-                const deadlineDelta = (a.deadlineDays ?? 999) - (b.deadlineDays ?? 999);
-                if (deadlineDelta) return deadlineDelta;
-
-                return parseDuration(a.estimatedTime) - parseDuration(b.estimatedTime);
-            })
-            .slice(0, 3);
-    }, [activeTasks]);
-    const repeatingHabits = useMemo(() => activeTasks.filter((task) => task.isRepeating), [activeTasks]);
-
-    const rawSuccessScore = Number(plan?.confidenceScore ?? plan?.successChance ?? 0);
-    const successScore = Number.isFinite(rawSuccessScore) ? Math.min(100, Math.max(0, rawSuccessScore)) : 0;
+    const userName = getDisplayName(profile, user);
     const [displayScore, setDisplayScore] = useState(0);
-    const [ringPulseVersion, setRingPulseVersion] = useState(0);
     const displayScoreRef = useRef(0);
-    const lastPulsedScoreRef = useRef(null);
     const confidenceMeta = getConfidenceMeta(displayScore);
-    const completedTaskCount = completedTasks.length;
-    const totalTaskCount = tasks.length;
-    const progressPercentage = totalTaskCount === 0 ? 0 : Math.round((completedTaskCount / totalTaskCount) * 100);
-    const currentStreak = Number(profile?.stats?.currentStreak ?? plan?.currentStreak ?? plan?.productivityStreak ?? plan?.streak?.current ?? 0);
     const aiCoachMessage = plan?.aiCoachMessage || plan?.agentMessage || plan?.confidenceMessage || "";
     const syncedAtMs = useMemo(() => {
         const rawDate = plan?.updatedAt || plan?.savedAt || plan?.activatedAt;
         const parsed = rawDate ? new Date(rawDate).getTime() : NaN;
         return Number.isFinite(parsed) ? parsed : null;
     }, [plan?.activatedAt, plan?.savedAt, plan?.updatedAt]);
-    const lastSyncedLabel = useMemo(() => {
-        if (!syncedAtMs) return "Live";
-        const elapsedSeconds = Math.max(0, Math.floor((nowMs - syncedAtMs) / 1000));
-        if (elapsedSeconds < 10) return "Just now";
-        if (elapsedSeconds < 60) return `${elapsedSeconds} sec ago`;
-
-        const elapsedMinutes = Math.floor(elapsedSeconds / 60);
-        if (elapsedMinutes === 1) return "1 min ago";
-        if (elapsedMinutes < 60) return `${elapsedMinutes} mins ago`;
-
-        const elapsedHours = Math.floor(elapsedMinutes / 60);
-        if (elapsedHours === 1) return "1 hour ago";
-        return `${elapsedHours} hours ago`;
-    }, [nowMs, syncedAtMs]);
+    const syncStatus = useMemo(
+        () => getSyncStatus({ isSyncing: Boolean(syncingTaskId), syncedAtMs, nowMs }),
+        [syncingTaskId, syncedAtMs, nowMs]
+    );
 
     const currentHour = new Date().getHours();
     const timeOfDay = currentHour < 12 ? "Morning" : currentHour < 18 ? "Afternoon" : currentHour < 22 ? "Evening" : "Night";
 
-    const ringRadius = 38;
+    const ringRadius = 34;
     const ringCircumference = 2 * Math.PI * ringRadius;
     const ringOffset = ringCircumference - (displayScore / 100) * ringCircumference;
-    const onlyRepeatingHabitsRemain = executionTasks.length === 0 && repeatingHabits.length > 0;
-    const calendarMeta = useMemo(() => {
-        const date = new Date(nowMs || 0);
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        const today = date.getDate();
-        const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const deadlineDays = new Set();
+    const calendarMeta = useMemo(
+        () => buildCalendarMeta(calendarView, tasks, new Date(nowMs)),
+        [calendarView, tasks, nowMs]
+    );
 
-        activeTasks.forEach((task) => {
-            if (task.deadlineDays === null || task.deadlineDays < 0) return;
-            const deadline = new Date(date);
-            deadline.setDate(date.getDate() + task.deadlineDays);
-            if (deadline.getFullYear() === year && deadline.getMonth() === month) {
-                deadlineDays.add(deadline.getDate());
-            }
-        });
-
-        return {
-            label: date.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
-            today,
-            deadlineDays,
-            days: Array.from({ length: 42 }, (_, index) => {
-                const day = index - firstWeekday + 1;
-                return day > 0 && day <= daysInMonth ? day : null;
-            }),
-        };
-    }, [activeTasks, nowMs]);
+    const shiftCalendarMonth = useCallback((direction) => {
+        setCalendarTransition(direction > 0 ? "dashboard-calendar-next" : "dashboard-calendar-prev");
+        setCalendarView((current) => new Date(current.getFullYear(), current.getMonth() + direction, 1));
+        setSelectedCalendarDay(null);
+        setTimeout(() => setCalendarTransition(""), 320);
+    }, []);
 
     useEffect(() => {
         let frameId;
@@ -258,9 +157,6 @@ function Dashboard() {
 
             if (progress < 1) {
                 frameId = requestAnimationFrame(animateScore);
-            } else if (start !== target && lastPulsedScoreRef.current !== target) {
-                lastPulsedScoreRef.current = target;
-                setRingPulseVersion((version) => version + 1);
             }
         };
 
@@ -270,7 +166,8 @@ function Dashboard() {
         };
     }, [successScore]);
 
-    const cardHoverEffect = "min-w-0 bg-white rounded-[22px] border border-[#E9DFD3]/80 shadow-[0_14px_40px_rgba(80,62,38,0.07)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_50px_rgba(80,62,38,0.1)] flex flex-col";
+    const cardHoverEffect = "min-w-0 bg-white rounded-[22px] border border-[#E9DFD3]/80 shadow-[0_16px_44px_rgba(80,62,38,0.08)] p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_58px_rgba(80,62,38,0.12)] flex flex-col";
+    const cardHeroEffect = `${cardHoverEffect} shadow-[0_20px_52px_rgba(80,62,38,0.1)] hover:shadow-[0_26px_64px_rgba(80,62,38,0.14)]`;
 
     const getFutureDate = useCallback((daysAhead) => {
         const d = new Date();
@@ -285,10 +182,11 @@ function Dashboard() {
         if (!plan || syncingTaskId) return;
 
         setSyncingTaskId(taskId);
+        const todayKey = getTodayKey();
         try {
             const sourceTasks = Array.isArray(plan.taskBoardTasks) ? plan.taskBoardTasks : tasks.map((task) => task.raw);
             const updatedTasks = sourceTasks.map((task, index) => {
-                const normalized = toTask(task, index);
+                const normalized = normalizeDashboardTask(task, index);
                 if (normalized.id !== taskId) return task;
                 const baseTask = typeof task === "string" ? { title: task } : task;
                 return {
@@ -296,20 +194,27 @@ function Dashboard() {
                     status: "Completed",
                     completed: true,
                     completedAt: new Date().toISOString(),
+                    completedDate: todayKey,
+                    lastProgressDate: todayKey,
                     currentCount: baseTask?.targetCount || baseTask?.currentCount,
                 };
             });
 
             const total = updatedTasks.length;
-            const completed = updatedTasks.filter((task, index) => toTask(task, index).status === "Completed").length;
+            const completed = updatedTasks.filter((task, index) => normalizeDashboardTask(task, index).status === "Completed").length;
             const nextProgress = total === 0 ? 0 : Math.round((completed / total) * 100);
 
             const didSave = await savePlan({
                 ...plan,
                 taskBoardTasks: updatedTasks,
-                confidenceScore: Math.max(Number(plan.confidenceScore || 0), nextProgress),
+                confidenceScore: nextProgress,
             });
             if (!didSave) throw new Error("Plan save was not accepted");
+
+            if (user?.uid) {
+                const nextStats = await recordTaskCompletionStreak(user.uid, profile?.stats || {});
+                updateProfileStats(nextStats);
+            }
         } catch (error) {
             console.error("Failed to complete task from dashboard", error);
             setToastMessage("Could not sync task. Please try again.");
@@ -321,7 +226,7 @@ function Dashboard() {
         } finally {
             setSyncingTaskId(null);
         }
-    }, [plan, syncingTaskId, tasks]);
+    }, [plan, syncingTaskId, tasks, user, profile, updateProfileStats]);
 
     if (isLoading) {
         return (
@@ -465,6 +370,26 @@ function Dashboard() {
                 .dashboard-ring-pulse {
                     animation: dashboardRingPulse 420ms ease-out 1;
                 }
+                @keyframes dashboardCalendarSlideNext {
+                    from { opacity: 0; transform: translateX(12px); }
+                    to { opacity: 1; transform: translateX(0); }
+                }
+                @keyframes dashboardCalendarSlidePrev {
+                    from { opacity: 0; transform: translateX(-12px); }
+                    to { opacity: 1; transform: translateX(0); }
+                }
+                .dashboard-calendar-next {
+                    animation: dashboardCalendarSlideNext 320ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+                }
+                .dashboard-calendar-prev {
+                    animation: dashboardCalendarSlidePrev 320ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+                }
+                .dashboard-task-complete {
+                    animation: dashboardCoachFade 280ms ease-out 1;
+                }
+                .dashboard-success-ring {
+                    transition: stroke-dashoffset 1000ms cubic-bezier(0.34, 1.2, 0.64, 1);
+                }
                 .dashboard-coach-fade {
                     animation: dashboardCoachFade 360ms ease-out 1;
                 }
@@ -487,13 +412,24 @@ function Dashboard() {
 
             <div className="dashboard-root relative min-h-screen bg-transparent text-gray-800 overflow-hidden font-sans pb-5">
                 <div className="relative z-10 max-w-[1510px] mx-auto px-5 py-4 lg:px-7 lg:py-5">
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 mt-0">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 mt-0">
                         <div>
                             <h2 className="text-[#A09486] text-[11px] font-black uppercase tracking-[0.18em] mb-0.5">Good {timeOfDay}!</h2>
-                            <h1 className="text-[28px] font-black tracking-tight text-gray-950 leading-tight">Welcome Back 👋</h1>
-                            <p className="text-[11px] font-medium text-gray-500 mt-1 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                Last Synced: <span className="text-gray-700 font-semibold">{lastSyncedLabel}</span>
+                            <h1 className="text-[28px] font-black tracking-tight text-gray-950 leading-tight">
+                                {userName ? `Welcome Back, ${userName} 👋` : "Welcome Back 👋"}
+                            </h1>
+                            <p className="text-[11px] font-medium text-gray-500 mt-1.5 flex items-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full ${syncStatus.tone === "syncing" ? "bg-amber-500 animate-pulse" : "bg-green-500"}`}></span>
+                                {syncStatus.tone === "syncing" ? (
+                                    <span className="text-amber-700 font-semibold">{syncStatus.label}</span>
+                                ) : syncStatus.tone === "synced" ? (
+                                    <span className="text-green-700 font-semibold">{syncStatus.label}</span>
+                                ) : (
+                                    <>
+                                        <span className="text-gray-500">Last Synced:</span>
+                                        <span className="text-gray-700 font-semibold">{syncStatus.label.replace("Last synced ", "")}</span>
+                                    </>
+                                )}
                             </p>
                         </div>
 
@@ -515,37 +451,9 @@ function Dashboard() {
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-4">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            <div className={`${cardHoverEffect} min-h-[162px]`}>
-                                <div className="flex items-center justify-between mb-2">
-                                    <h3 className="text-gray-900 text-sm font-extrabold tracking-tight">Success Chance</h3>
-                                    <span role="img" aria-label="Realtime value from Firebase" className="text-gray-400 text-xs cursor-help">ⓘ</span>
-                                </div>
-                                <div className="flex items-center justify-between gap-2 my-auto py-1 xl:gap-5">
-                                    <div className="flex min-w-0 flex-col justify-center">
-                                        <p className="text-3xl font-black tracking-tight text-green-600 leading-none transition-all duration-500 xl:text-4xl">{displayScore}%</p>
-                                        <span className={`text-[9px] font-black tracking-widest px-2 py-0.5 rounded border w-max mt-3 mb-2 ${confidenceMeta.badgeColor}`}>
-                                            {confidenceMeta.badge}
-                                        </span>
-                                        <p className="text-xs text-gray-500 font-semibold leading-normal truncate">{confidenceMeta.text}</p>
-                                    </div>
-                                    <div className="relative w-[92px] h-[92px] flex items-center justify-center shrink-0">
-                                        {ringPulseVersion > 0 && (
-                                            <span key={ringPulseVersion} className="dashboard-ring-pulse absolute inset-1 rounded-full pointer-events-none" style={{ backgroundColor: confidenceMeta.hex }}></span>
-                                        )}
-                                        <svg aria-hidden="true" className="transform -rotate-90 w-full h-full relative z-10" style={{ filter: `drop-shadow(0 0 10px ${confidenceMeta.hex}40)` }}>
-                                            <circle cx="46" cy="46" r={ringRadius} stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-100" />
-                                            <circle cx="46" cy="46" r={ringRadius} stroke={confidenceMeta.hex} strokeWidth="8" fill="transparent" strokeDasharray={ringCircumference} strokeDashoffset={ringOffset} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
-                                        </svg>
-                                        <div className="absolute inset-0 flex items-center justify-center z-20">
-                                            <span className="text-lg font-black text-green-600 transition-all duration-500">{displayScore}%</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className={`${cardHoverEffect} min-h-[162px] bg-gradient-to-br from-white to-red-50/30 border-red-100/80 hover:-translate-y-1 hover:shadow-[0_20px_55px_rgba(239,68,68,0.12)]`}>
+                    <div className="flex flex-col gap-5">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                            <div className={`${cardHeroEffect} min-h-[172px] bg-gradient-to-br from-white to-red-50/30 border-red-100/80`}>
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-gray-900 text-sm font-extrabold tracking-tight">Today's Focus</h3>
                                     <span role="img" aria-label="Highest priority active task" className="text-red-400/70 text-xs cursor-help">ⓘ</span>
@@ -570,23 +478,57 @@ function Dashboard() {
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-1.5">
-                                                <button type="button" onClick={() => navigate("/tasks")} className="text-[10px] font-black uppercase tracking-[0.18em] text-red-500 bg-red-50 border border-red-100 rounded-full px-2.5 py-1 transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300">
+                                                <button type="button" onClick={() => navigate("/tasks")} className="text-[10px] font-black uppercase tracking-[0.18em] text-red-500 bg-red-50 border border-red-100 rounded-full px-2.5 py-1 transition-all duration-200 hover:-translate-y-0.5 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300">
                                                     Start Focus
                                                 </button>
-                                                <button type="button" onClick={() => navigate("/tasks")} className="text-[10px] font-black uppercase tracking-[0.18em] text-purple-600 bg-purple-50 border border-purple-100 rounded-full px-2.5 py-1 transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-300">
+                                                <button type="button" onClick={() => navigate("/tasks")} className="text-[10px] font-black uppercase tracking-[0.18em] text-purple-600 bg-purple-50 border border-purple-100 rounded-full px-2.5 py-1 transition-all duration-200 hover:-translate-y-0.5 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-300">
                                                     View Full Plan
                                                 </button>
                                             </div>
                                         </>
                                     ) : (
-                                        <button type="button" onClick={() => navigate("/tasks")} className="text-[10px] font-black uppercase tracking-[0.18em] text-purple-600 bg-purple-50 border border-purple-100 rounded-full px-2.5 py-1 transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-300">
+                                        <button type="button" onClick={() => navigate("/tasks")} className="text-[10px] font-black uppercase tracking-[0.18em] text-purple-600 bg-purple-50 border border-purple-100 rounded-full px-2.5 py-1 transition-all duration-200 hover:-translate-y-0.5 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-300">
                                             View Full Plan
                                         </button>
                                     )}
                                 </div>
                             </div>
 
-                            <div className={`${cardHoverEffect} min-h-[162px]`}>
+                            <div className={`${cardHeroEffect} min-h-[172px]`}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-gray-900 text-sm font-extrabold tracking-tight">Success Chance</h3>
+                                    <span role="img" aria-label="Derived from live task progress" className="text-gray-400 text-xs cursor-help">ⓘ</span>
+                                </div>
+                                <div className="flex items-center justify-center gap-4 my-auto py-2">
+                                    <div className="relative w-[108px] h-[108px] flex items-center justify-center shrink-0">
+                                        <div className="absolute inset-[10px] rounded-full bg-white shadow-inner z-10" />
+                                        <svg aria-hidden="true" className="transform -rotate-90 w-full h-full relative z-20" style={{ filter: `drop-shadow(0 0 8px ${confidenceMeta.hex}30)` }}>
+                                            <circle cx="54" cy="54" r={ringRadius} stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-100" />
+                                            <circle
+                                                cx="54"
+                                                cy="54"
+                                                r={ringRadius}
+                                                stroke={confidenceMeta.hex}
+                                                strokeWidth="8"
+                                                fill="transparent"
+                                                strokeDasharray={ringCircumference}
+                                                strokeDashoffset={ringOffset}
+                                                strokeLinecap="round"
+                                                className="dashboard-success-ring"
+                                            />
+                                        </svg>
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center z-30 pointer-events-none">
+                                            <span className={`text-xl font-black leading-none transition-all duration-500 ${confidenceMeta.textColor}`}>{displayScore}%</span>
+                                            <span className={`text-[8px] font-black tracking-widest px-1.5 py-0.5 rounded border mt-1 ${confidenceMeta.badgeColor}`}>
+                                                {confidenceMeta.badge}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-gray-500 font-semibold leading-relaxed max-w-[140px]">{confidenceMeta.text}</p>
+                                </div>
+                            </div>
+
+                            <div className={`${cardHoverEffect} min-h-[172px]`}>
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2.5">
                                         <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-base border border-purple-100 shadow-2xs">🤖</div>
@@ -604,8 +546,8 @@ function Dashboard() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                            <div className={`lg:col-span-7 ${cardHoverEffect} min-h-[250px]`}>
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                            <div className={`lg:col-span-7 ${cardHoverEffect} min-h-[260px]`}>
                                 <div className="flex items-center justify-between mb-2.5">
                                     <h3 className="text-gray-900 text-base font-bold flex items-center gap-2">🎯 Today's Tasks</h3>
                                     <button type="button" onClick={() => navigate("/tasks")} className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg font-bold tracking-wide text-[10px] transition-all duration-200 flex items-center gap-1.5">
@@ -628,12 +570,15 @@ function Dashboard() {
                                 {todayTasks.length > 0 ? (
                                     <div className="space-y-2 flex-1 flex flex-col justify-center">
                                         {todayTasks.map((task) => (
-                                            <div key={task.id} className="flex items-center gap-3 px-3 py-2.5 bg-white rounded-xl border border-gray-100 shadow-[0_4px_14px_rgba(80,62,38,0.03)] transition-all duration-200 group hover:border-purple-100">
+                                            <div
+                                                key={task.id}
+                                                className={`flex items-center gap-3 px-3 py-2.5 bg-white rounded-xl border border-gray-100 shadow-[0_4px_14px_rgba(80,62,38,0.04)] transition-all duration-300 group hover:border-purple-100 hover:shadow-[0_8px_22px_rgba(80,62,38,0.07)] ${syncingTaskId === task.id ? "dashboard-task-complete opacity-70" : ""}`}
+                                            >
                                                 <button
                                                     type="button"
                                                     onClick={() => handleCompleteTask(task.id)}
                                                     disabled={syncingTaskId === task.id}
-                                                    className="w-3.5 h-3.5 border border-gray-300 rounded cursor-pointer transition-all disabled:cursor-wait disabled:opacity-60 hover:border-green-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-300 focus-visible:ring-offset-2"
+                                                    className="w-3.5 h-3.5 border border-gray-300 rounded cursor-pointer transition-all duration-200 disabled:cursor-wait disabled:opacity-60 hover:border-green-500 hover:scale-110 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-300 focus-visible:ring-offset-2"
                                                     aria-label={`Complete ${task.title}`}
                                                 />
                                                 <span className="text-xs font-bold transition-all duration-200 flex-1 text-gray-800 truncate">{task.title}</span>
@@ -660,7 +605,7 @@ function Dashboard() {
                                 )}
                             </div>
 
-                            <div className={`lg:col-span-5 ${cardHoverEffect} min-h-[250px]`}>
+                            <div className={`lg:col-span-5 ${cardHoverEffect} min-h-[260px]`}>
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-2">
                                         <span className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center">
@@ -671,51 +616,91 @@ function Dashboard() {
                                             <p className="text-[9px] font-black uppercase tracking-[0.16em] text-gray-400">{calendarMeta.label}</p>
                                         </div>
                                     </div>
-                                    <span className="rounded-full border border-orange-100 bg-orange-50 px-2.5 py-1 text-[10px] font-black text-orange-600">
-                                        🔥 {currentStreak} day streak
-                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => shiftCalendarMonth(-1)}
+                                            className="w-7 h-7 rounded-lg border border-[#EFE5D9] bg-[#FAF8F4] text-gray-500 hover:text-purple-600 hover:border-purple-100 transition-all duration-200 active:scale-95 flex items-center justify-center"
+                                            aria-label="Previous month"
+                                        >
+                                            <ChevronLeft className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => shiftCalendarMonth(1)}
+                                            className="w-7 h-7 rounded-lg border border-[#EFE5D9] bg-[#FAF8F4] text-gray-500 hover:text-purple-600 hover:border-purple-100 transition-all duration-200 active:scale-95 flex items-center justify-center"
+                                            aria-label="Next month"
+                                        >
+                                            <ChevronRight className="w-4 h-4" />
+                                        </button>
+                                        <span className="rounded-full border border-orange-100 bg-orange-50 px-2.5 py-1 text-[10px] font-black text-orange-600 ml-1">
+                                            🔥 {currentStreak} day streak
+                                        </span>
+                                    </div>
                                 </div>
 
-                                <div className="grid grid-cols-7 gap-x-1 gap-y-0.5 flex-1">
+                                <div className={`grid grid-cols-7 gap-x-1 gap-y-0.5 flex-1 ${calendarTransition}`}>
                                     {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => (
                                         <span key={`${day}-${index}`} className="h-5 text-center text-[9px] font-black text-gray-400">
                                             {day}
                                         </span>
                                     ))}
                                     {calendarMeta.days.map((day, index) => {
-                                        const isToday = day === calendarMeta.today;
+                                        const isToday = day !== null && day === calendarMeta.today;
                                         const hasDeadline = day !== null && calendarMeta.deadlineDays.has(day);
+                                        const isCompleted = day !== null && calendarMeta.completedDays.has(day);
+                                        const isSelected = day !== null && day === selectedCalendarDay;
                                         return (
-                                            <div key={index} className="relative h-6 flex items-center justify-center">
+                                            <div key={index} className="relative h-7 flex items-center justify-center">
                                                 {day !== null && (
-                                                    <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold transition-colors ${
-                                                        isToday
-                                                            ? "bg-purple-600 text-white shadow-[0_5px_14px_rgba(147,51,234,0.28)]"
-                                                            : "text-gray-600 hover:bg-purple-50"
-                                                    }`}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedCalendarDay(day)}
+                                                        className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all duration-200 ${
+                                                            isToday
+                                                                ? "bg-purple-600 text-white shadow-[0_5px_14px_rgba(147,51,234,0.28)]"
+                                                                : isSelected
+                                                                    ? "bg-purple-100 text-purple-700 ring-2 ring-purple-200"
+                                                                    : isCompleted
+                                                                        ? "bg-green-50 text-green-700 border border-green-100 hover:bg-green-100"
+                                                                        : hasDeadline
+                                                                            ? "bg-red-50 text-red-600 border border-red-100 hover:bg-red-100"
+                                                                            : "text-gray-600 hover:bg-purple-50"
+                                                        }`}
+                                                        aria-label={`${calendarMeta.label} day ${day}`}
+                                                    >
                                                         {day}
-                                                    </span>
+                                                    </button>
                                                 )}
-                                                {hasDeadline && (
-                                                    <span className={`absolute bottom-0 w-1 h-1 rounded-full ${isToday ? "bg-white" : "bg-red-500"}`}></span>
+                                                {hasDeadline && !isToday && (
+                                                    <span className="absolute bottom-0 w-1 h-1 rounded-full bg-red-500 pointer-events-none"></span>
+                                                )}
+                                                {isCompleted && !isToday && (
+                                                    <span className="absolute top-0 right-0.5 w-1 h-1 rounded-full bg-green-500 pointer-events-none"></span>
                                                 )}
                                             </div>
                                         );
                                     })}
                                 </div>
 
-                                <div className="mt-2 flex items-center justify-between border-t border-[#EFE5D9] pt-2">
-                                    <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                                        Upcoming deadline
-                                    </span>
-                                    <span className="text-[10px] font-black text-green-600">{completedTaskCount} completed</span>
+                                <div className="mt-3 flex items-center justify-between border-t border-[#EFE5D9] pt-2.5">
+                                    <div className="flex items-center gap-3">
+                                        <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                            Deadline
+                                        </span>
+                                        <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                            Completed
+                                        </span>
+                                    </div>
+                                    <span className="text-[10px] font-black text-green-600">{completedTodayCount} today</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                            <div className={`lg:col-span-7 ${cardHoverEffect} min-h-[250px]`}>
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                            <div className={`lg:col-span-7 ${cardHoverEffect} min-h-[260px]`}>
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-gray-900 text-sm font-bold flex items-center gap-1.5">⏳ Upcoming Deadlines</h3>
                                     <button type="button" className="text-purple-600 text-[11px] font-bold hover:underline" onClick={() => navigate("/tasks")}>View All</button>
@@ -753,14 +738,14 @@ function Dashboard() {
                                 </div>
                             </div>
 
-                            <div className={`lg:col-span-5 ${cardHoverEffect} min-h-[250px]`}>
+                            <div className={`lg:col-span-5 ${cardHoverEffect} min-h-[260px]`}>
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-gray-900 text-base font-bold flex items-center gap-2">✅ Completed Today</h3>
-                                    <span className="text-purple-600 text-[11px] font-bold">{completedTaskCount}</span>
+                                    <span className="text-purple-600 text-[11px] font-bold">{completedTodayCount}</span>
                                 </div>
                                 <div className="relative pl-2 flex-1 flex flex-col justify-around space-y-2.5 my-1">
                                     <div className="absolute top-2 bottom-2 left-3 w-px bg-gray-100"></div>
-                                    {completedTasks.slice(0, 5).map((item) => (
+                                    {completedToday.slice(0, 5).map((item) => (
                                         <div key={item.id} className="relative flex items-center gap-3.5 z-10">
                                             <div className="w-2 h-2 rounded-full ring-[5px] ring-white shrink-0 bg-green-500"></div>
                                             <div className="flex-1 flex justify-between items-center bg-white rounded min-w-0 gap-2">
@@ -769,9 +754,9 @@ function Dashboard() {
                                             </div>
                                         </div>
                                     ))}
-                                    {completedTasks.length === 0 && (
+                                    {completedToday.length === 0 && (
                                         <div className="flex items-center justify-center rounded-xl border border-dashed border-gray-100 bg-gray-50 p-6">
-                                            <p className="text-xs text-gray-400 font-bold">No tasks completed yet.</p>
+                                            <p className="text-xs text-gray-400 font-bold">No tasks completed today yet.</p>
                                         </div>
                                     )}
                                 </div>

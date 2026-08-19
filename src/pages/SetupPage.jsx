@@ -2,14 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Brain, CheckCircle2, AlertCircle, Loader2, GraduationCap, Briefcase,
-    Laptop, Sparkles, Sun, Sunset, Moon, Clock, Search, Rocket, Palette, Check
+    Laptop, Sparkles, Sun, Sunset, Moon, Clock, Search, Rocket, Palette, Check, CloudSun
 } from "lucide-react";
 import { checkAuthState, getUserProfile, completeUserSetup } from "../services/authService";
 
 
 function SetupPage() {
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
     const [isInitializing, setIsInitializing] = useState(true);
     const [currentUser, setCurrentUser] = useState(null);
 
@@ -121,7 +120,7 @@ function SetupPage() {
 
     const workTimes = [
         { id: "Morning", icon: Sun },
-        { id: "Afternoon", icon: Sun },
+        { id: "Afternoon", icon: CloudSun },
         { id: "Evening", icon: Sunset },
         { id: "Night", icon: Moon },
         { id: "Flexible", icon: Clock }
@@ -180,7 +179,7 @@ function SetupPage() {
             console.error("❌ Setup failed:", error);
             setError(error.message || "Failed to complete setup.");
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     }
         if (isInitializing) {

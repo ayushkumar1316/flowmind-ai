@@ -2,8 +2,9 @@ import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { LayoutDashboard, Sparkles, CheckSquare, BarChart2, Brain, CalendarDays, Clock3, Flame } from "lucide-react";
 
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import SidebarProfile from "../common/SidebarProfile";
+import { getProductivityStreak } from "../../utils/dashboardMetrics";
 
 function Sidebar() {
   const location = useLocation();
@@ -11,7 +12,7 @@ function Sidebar() {
   
   // Single Source of Truth Global Context
   const { profile } = useAuth();
-  const streak = profile?.stats?.currentStreak || 0;
+  const streak = getProductivityStreak(profile);
 
   // 1. Live Clock Effect
   useEffect(() => {

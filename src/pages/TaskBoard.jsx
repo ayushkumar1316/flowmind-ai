@@ -1,7 +1,9 @@
 // src/pages/TaskBoard.jsx
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { subscribeToPlan, savePlan } from "../services/firebaseService";
-import { useAuth } from "../contexts/AuthContext";
+import { recordTaskCompletionStreak } from "../services/authService";
+import { useAuth } from "../hooks/useAuth";
+import { usePlan } from "../hooks/usePlan";
+import { getDisplayName, getProductivityStreak } from "../utils/dashboardMetrics";
 
 // Helper: Convert "4 Hours" or "30 Min" into a comparable numeric hour value
 const parseDuration = (timeStr) => {
@@ -97,9 +99,8 @@ function TaskBoard() {
     // =====================================
 
     // Core States
-    const [tasks, setTasks] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [localTasks, setLocalTasks] = useState(null);
     
     // UI Interaction States
     const [completedExpanded, setCompletedExpanded] = useState(false);
@@ -113,25 +114,11 @@ function TaskBoard() {
     const [celebration, setCelebration] = useState(null);
     const [deletedTaskInfo, setDeletedTaskInfo] = useState(null);
     const deleteTimeoutRef = useRef(null);
-    const latestPlanRef = useRef(null);
-    const { profile } = useAuth();
+    const { user, profile, updateProfileStats } = useAuth();
+    const { plan, loadingPlan: isLoading, syncTasks } = usePlan();
 
-    // =====================================
-    // REALTIME FIREBASE SUBSCRIPTION
-    // =====================================
-    useEffect(() => {
-        const unsubscribe = subscribeToPlan((realtimePlan) => {
-            latestPlanRef.current = realtimePlan;
-            setIsLoading(false);
-            setError(null);
-            setTasks(getPlanTasks(realtimePlan));
-        });
-
-        return () => {
-            if (unsubscribe) unsubscribe();
-            if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
-        };
-    }, []);
+    const planTasks = useMemo(() => (plan ? getPlanTasks(plan) : []), [plan]);
+    const tasks = localTasks ?? planTasks;
 
     useEffect(() => {
         if (!focusTimer?.isRunning || focusTimer.remainingSeconds <= 0) return undefined;
@@ -156,24 +143,14 @@ function TaskBoard() {
     // GLOBAL SYNC ENGINE
     // =====================================
     const syncPlanUpdates = useCallback(async (updatedTasks) => {
-        const completedCount = updatedTasks.filter(t => t.status === "Completed").length;
-        const total = updatedTasks.length;
-        const progress = total === 0 ? 0 : Math.round((completedCount / total) * 100);
-        const currentConfidence = Number(latestPlanRef.current?.confidenceScore);
-        const planUpdates = { taskBoardTasks: updatedTasks };
-
-        if (Number.isFinite(currentConfidence)) {
-            planUpdates.confidenceScore = Math.min(100, Math.max(currentConfidence, progress));
-        }
-
         try {
-            const didSave = await savePlan(planUpdates);
-            if (!didSave) throw new Error("Firebase rejected the task update");
+            await syncTasks(updatedTasks);
+            setLocalTasks(null);
         } catch (err) {
             console.error("Failed to sync plan updates to cloud", err);
             setError("Task sync failed. Please try again.");
         }
-    }, []);
+    }, [syncTasks]);
 
     // =====================================
     // OPTIMISTIC MUTATION & FOCUS HANDLERS
@@ -189,7 +166,7 @@ function TaskBoard() {
         // CSS glow & collapse animation timeout
         setTimeout(() => {
             setCompletingId(null);
-            setTasks(prev => {
+            setLocalTasks(prev => {
                 const updated = prev.map(t => {
                     if (t.id === taskId) {
                         return {
@@ -208,16 +185,22 @@ function TaskBoard() {
                 return updated;
             });
             triggerCelebration();
+
+            if (user?.uid) {
+                recordTaskCompletionStreak(user.uid, profile?.stats || {})
+                    .then((nextStats) => updateProfileStats(nextStats))
+                    .catch((err) => console.error("Failed to update productivity streak", err));
+            }
             
             if (focusedTaskId === taskId) {
                 setFocusedTaskId(null);
             }
             setFocusTimer((timer) => timer?.taskId === taskId ? null : timer);
         }, 400);
-    }, [focusedTaskId, syncPlanUpdates, triggerCelebration]);
+    }, [focusedTaskId, syncPlanUpdates, triggerCelebration, user, profile, updateProfileStats]);
 
     const handleUndoComplete = useCallback((taskId) => {
-        setTasks(prev => {
+        setLocalTasks(prev => {
             const updated = prev.map(t => {
                 if (t.id !== taskId) return t;
                 return {
@@ -235,7 +218,7 @@ function TaskBoard() {
     }, [syncPlanUpdates]);
 
     const handleIncrementRepeating = useCallback((taskId) => {
-        setTasks(prev => {
+        setLocalTasks(prev => {
             let shouldComplete = false;
             const updated = prev.map(t => {
                 if (t.id === taskId) {
@@ -261,7 +244,7 @@ function TaskBoard() {
         // Optimistic Remove
         const previousTasks = [...tasks];
         const updatedTasks = tasks.filter(t => t.id !== task.id);
-        setTasks(updatedTasks);
+        setLocalTasks(updatedTasks);
         
         if (focusedTaskId === task.id) setFocusedTaskId(null);
 
@@ -278,7 +261,7 @@ function TaskBoard() {
     const handleUndoDelete = useCallback(() => {
         if (!deletedTaskInfo) return;
         if (deleteTimeoutRef.current) clearTimeout(deleteTimeoutRef.current);
-        setTasks(deletedTaskInfo.previousTasks);
+        setLocalTasks(deletedTaskInfo.previousTasks);
         setDeletedTaskInfo(null);
     }, [deletedTaskInfo]);
 
@@ -295,12 +278,12 @@ function TaskBoard() {
             setFocusedTaskId(null);
             setFocusTimer((timer) => timer?.taskId === task.id ? null : timer);
             const updated = tasks.map(t => t.id === task.id ? { ...t, notes: activeNoteContent } : t);
-            setTasks(updated);
+            setLocalTasks(updated);
             syncPlanUpdates(updated);
         } else {
             if (focusedTaskId) {
                 const currentTasks = tasks.map(t => t.id === focusedTaskId ? { ...t, notes: activeNoteContent } : t);
-                setTasks(currentTasks);
+                setLocalTasks(currentTasks);
                 syncPlanUpdates(currentTasks);
             }
             setFocusedTaskId(task.id);
@@ -336,7 +319,7 @@ function TaskBoard() {
     const handleNotesBlur = useCallback(() => {
         if (!focusedTaskId) return;
         const updated = tasks.map(t => t.id === focusedTaskId ? { ...t, notes: activeNoteContent } : t);
-        setTasks(updated);
+        setLocalTasks(updated);
         syncPlanUpdates(updated);
         setNotesSaved(true);
         setTimeout(() => setNotesSaved(false), 2000);
@@ -373,7 +356,10 @@ function TaskBoard() {
     const completedCount = completedTasksList.length;
     const progressPercent = totalTasksCount === 0 ? 0 : Math.round((completedCount / totalTasksCount) * 100);
     const isOnlyRepeatingLeft = activeTasks.length > 0 && activeTasks.every(t => t.isRepeating);
-    const currentStreak = Number(profile?.stats?.currentStreak ?? latestPlanRef.current?.currentStreak ?? latestPlanRef.current?.productivityStreak ?? latestPlanRef.current?.streak?.current ?? 0);
+    const currentStreak = useMemo(() => getProductivityStreak(profile, plan), [profile, plan]);
+    const userName = getDisplayName(profile, user);
+    const currentHour = new Date().getHours();
+    const timeOfDay = currentHour < 12 ? "Morning" : currentHour < 18 ? "Afternoon" : currentHour < 22 ? "Evening" : "Night";
 
     // Styling Helpers
     const getPriorityStyles = useCallback((priority) => {
@@ -477,7 +463,9 @@ function TaskBoard() {
                     ===================================== */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                         <div>
-                            <h2 className="text-[#A09486] text-[11px] font-black uppercase tracking-[0.18em] mb-1">Good Morning, Ayush</h2>
+                            <h2 className="text-[#A09486] text-[11px] font-black uppercase tracking-[0.18em] mb-1">
+                                Good {timeOfDay}{userName ? `, ${userName}` : ""}
+                            </h2>
                             <h1 className="text-4xl font-black tracking-tight text-gray-950 leading-tight">Today's Execution</h1>
                             <p className="text-sm font-medium text-gray-500 mt-1">Focus on what matters most today. Complete one meaningful task at a time.</p>
                         </div>

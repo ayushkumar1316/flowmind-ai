@@ -1,159 +1,81 @@
-# ⚡ FlowMind
+# FlowMind
 
 <div align="center">
 
-### 🧠 AI-Powered Personal Execution Intelligence Platform
+### AI-Powered Personal Execution Intelligence Platform
 
 > **Transform Goals into Daily Execution — Finish What Matters Before Deadlines Find You.**
-
-Built for **Vibe2Ship Hackathon 2026** by **Coding Ninjas × Google Developers**
-
-🌐 **Live Demo:** https://flowmind-db.web.app
 
 </div>
 
 ---
 
-# 🚀 Overview
+## Overview
 
-FlowMind is an AI-powered execution intelligence platform designed to help users consistently complete meaningful work before deadlines become stressful.
+FlowMind is an AI-powered execution intelligence platform that helps users consistently complete meaningful work before deadlines become stressful.
 
-Unlike traditional task managers that only organize tasks, FlowMind transforms user goals into personalized daily execution plans, tracks progress in real time, synchronizes data across devices using Firebase, and generates AI-powered productivity insights through Google Gemini.
+Unlike traditional task managers that only organize tasks, FlowMind transforms your goals into personalized daily execution plans, tracks progress in real time, syncs data across devices via Firebase, and generates AI-powered productivity insights through Google Gemini.
 
-It acts as a personal AI execution coach that focuses on **execution**, not just planning.
-
----
-
-# ❓ Problem Statement
-
-Millions of students and professionals struggle with:
-
-- Missing deadlines
-- Poor task prioritization
-- Overwhelming workloads
-- Lack of execution consistency
-- No personalized productivity guidance
-
-Most productivity apps stop at creating task lists.
-
-**FlowMind goes one step further by helping users actually execute their plans before deadlines become pressure.**
+It's not a to-do list. It's a **personal AI execution coach**.
 
 ---
 
-# 💡 Solution
+## Features
 
-FlowMind combines **Google Gemini AI** with **Firebase's realtime cloud infrastructure** to create an intelligent execution platform that:
+### Smart Authentication
+Google Sign-In, Email/Password auth, secure Firebase Authentication, and personalized onboarding flow.
 
-- Generates structured execution plans
-- Tracks task completion live
-- Synchronizes progress across every module
-- Provides execution intelligence through analytics
-- Learns from user activity to deliver personalized insights
+### AI Planner
+Describe your goal in plain text. FlowMind uses Google Gemini to generate a structured execution plan with priorities, time blocks, deadlines, and risk analysis.
 
----
+### Save My Day
+Running short on time? Tell FlowMind how many hours you have left and it will AI-triage your tasks — what to do now, what to push tomorrow, what to drop entirely.
 
-# ✨ Key Features
+### Live Task Board
+Real-time task completion with focus sessions, smart sorting (priority → deadline → duration), repeating habit tracking, quick notes, and undo support.
 
-## 🔐 Smart Authentication
+### Execution Dashboard
+Live productivity overview with success chance ring, AI coach messages, smart calendar, upcoming deadlines, and completed-today timeline.
 
-- Google Sign-In
-- Email & Password Authentication
-- Secure Firebase Authentication
-- Personalized User Onboarding
+### AI Insights
+Confidence trend charts, execution DNA profile, productivity analytics, AI prediction engine, and weekly execution intelligence.
 
----
-
-## 🧠 AI Planner
-
-- Goal-based planning
-- Gemini-powered task generation
-- Daily execution plans
-- Milestone creation
-- Personalized scheduling
+### Realtime Sync
+Everything syncs instantly across devices via Cloud Firestore. One subscription, shared state across all pages.
 
 ---
 
-## ✅ Live Task Board
+## Tech Stack
 
-- Realtime task completion
-- Progress tracking
-- Focus sessions
-- Upcoming tasks
-- Completed history
-- Persistent Firestore synchronization
-
----
-
-## 📊 Execution Dashboard
-
-- Live productivity overview
-- Daily progress tracking
-- Productivity streak
-- Current execution status
-- Dynamic statistics
+| Category | Technology |
+|-----------|------------|
+| Frontend | React 19 + Vite |
+| Styling | Tailwind CSS |
+| AI Engine | Google Gemini 2.5 Flash |
+| Auth | Firebase Authentication |
+| Database | Cloud Firestore |
+| Charts | Recharts |
+| Icons | Lucide React |
+| Hosting | Firebase Hosting |
 
 ---
 
-## 📈 AI Insights
+## Architecture
 
-- Confidence Trend
-- Execution DNA Profile
-- Productivity Analytics
-- AI Prediction Engine
-- Learning Progress
-- Weekly execution intelligence
-
----
-
-## ☁ Firebase Backend
-
-- Cloud Firestore Database
-- Firebase Authentication
-- Realtime Synchronization
-- Persistent User Profiles
-- Cross-page State Management
-
----
-
-## 📱 Premium User Experience
-
-- Fully Responsive Design
-- Modern Glassmorphism UI
-- Smooth Animations
-- Clean Minimal Interface
-- Personalized Dashboard
-
----
-
-# ⭐ Why FlowMind?
-
-| Traditional Productivity Apps | FlowMind |
-|-------------------------------|----------|
-| Static To-do Lists | ✅ AI Execution Planning |
-| Manual Organization | ✅ Gemini Smart Planning |
-| Basic Progress Tracking | ✅ Live Execution Intelligence |
-| No Predictions | ✅ AI Prediction Engine |
-| Generic User Experience | ✅ Personalized Onboarding |
-| Simple Task Storage | ✅ Firebase Cloud Sync |
-
----
-
-# 🏗 System Architecture
-
-```text
+```
                     User
                       │
                       ▼
          Firebase Authentication
                       │
                       ▼
-             User Profile Setup
+            User Profile Setup
                       │
                       ▼
-            Google Gemini AI Planner
+          Google Gemini AI Planner
                       │
                       ▼
-             Cloud Firestore Database
+         Cloud Firestore Database
                       │
       ┌───────────────┼───────────────┐
       ▼               ▼               ▼
@@ -166,65 +88,27 @@ FlowMind combines **Google Gemini AI** with **Firebase's realtime cloud infrastr
 
 ---
 
-# 🛠 Tech Stack
-
-| Category | Technology |
-|-----------|------------|
-| Frontend | React 19 + Vite |
-| Styling | CSS3 |
-| Authentication | Firebase Authentication |
-| Database | Cloud Firestore |
-| AI Engine | Google Gemini 2.5 Flash |
-| Charts | Recharts |
-| Icons | Lucide React |
-| Hosting | Firebase Hosting |
-
----
-
-# ☁ Google Technologies Used
-
-- 🤖 Google Gemini 2.5 Flash
-- 🧠 Google AI Studio
-- 🔐 Firebase Authentication
-- 🔥 Cloud Firestore
-- 🌍 Firebase Hosting
-
----
-
-# ⚙ Local Setup
-
-Clone the repository
+## Local Setup
 
 ```bash
 git clone https://github.com/ayushkumar1316/flowmind-ai-.git
-```
-
-Move into the project
-
-```bash
 cd flowmind-ai-
-```
-
-Install dependencies
-
-```bash
 npm install
 ```
 
-Create a `.env` file
+Create a `.env` file:
 
 ```env
-VITE_GEMINI_API_KEY=YOUR_GEMINI_API_KEY
-
-VITE_FIREBASE_API_KEY=YOUR_FIREBASE_API_KEY
-VITE_FIREBASE_AUTH_DOMAIN=YOUR_AUTH_DOMAIN
-VITE_FIREBASE_PROJECT_ID=YOUR_PROJECT_ID
-VITE_FIREBASE_STORAGE_BUCKET=YOUR_STORAGE_BUCKET
-VITE_FIREBASE_MESSAGING_SENDER_ID=YOUR_SENDER_ID
-VITE_FIREBASE_APP_ID=YOUR_APP_ID
+VITE_GEMINI_API_KEY=your_gemini_api_key
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
 ```
 
-Run locally
+Run locally:
 
 ```bash
 npm run dev
@@ -232,70 +116,59 @@ npm run dev
 
 ---
 
-# 📂 Project Structure
+## Project Structure
 
-```text
-src
-│
-├── assets
-├── components
-├── pages
-│   ├── Dashboard
-│   ├── AIPlanner
-│   ├── TaskBoard
-│   ├── Insights
-│   ├── AuthPage
-│   └── SetupPage
-│
-├── services
-│   ├── firebaseService
-│   ├── authService
-│   └── gemini
-│
-├── hooks
-├── utils
-└── data
+```
+src/
+├── components/          # Shared UI components
+│   └── layout/          # MainLayout, Sidebar
+├── contexts/            # React Context providers
+│   ├── AuthContext.jsx
+│   ├── AuthProvider.jsx
+│   ├── PlanContext.jsx
+│   └── PlanProvider.jsx
+├── hooks/               # Custom hooks
+│   ├── useAuth.js
+│   └── usePlan.js
+├── pages/
+│   ├── Dashboard.jsx    # Execution overview
+│   ├── AIPlanner.jsx    # AI plan generation
+│   ├── TaskBoard.jsx    # Task execution workspace
+│   ├── Insights.jsx     # Analytics & insights
+│   ├── AuthPage.jsx     # Login / signup
+│   └── SetupPage.jsx    # Onboarding flow
+├── services/
+│   ├── firebaseService.js
+│   ├── authService.js
+│   └── gemini.js        # Gemini AI integration
+└── utils/
+    └── dashboardMetrics.js
 ```
 
 ---
 
-<!-- # 📸 Screenshots
+## Roadmap
 
-- Login & Authentication
-- Personalized Onboarding
-- AI Planner
-- Dashboard
-- Task Board
-- AI Insights
-
-> *(Add screenshots here after deployment.)* -->
-
----
-
-# 🔮 Future Scope
-
-- 📅 Google Calendar Integration
-- 🔔 Smart Notifications
-- 🤝 Team Collaboration
-- 📱 Mobile Application
-- ⌚ WearOS Support
-- 🎙 AI Voice Assistant
-- 🧠 Adaptive Scheduling Engine
-- 📊 Advanced Productivity Forecasting
+- [ ] Save My Day — AI daily triage
+- [ ] AI Reanalysis on task completion
+- [ ] Settings page & profile editing
+- [ ] Guest-to-account upgrade
+- [ ] Subtasks & drag-to-reorder
+- [ ] Focus timer persistence
+- [ ] Dark mode
+- [ ] Keyboard shortcuts
+- [ ] Offline support (IndexedDB)
+- [ ] TypeScript migration
 
 ---
 
-# 👨‍💻 Developer
+## Author
 
 **Ayush Kumar**
-
-Built with ❤️ for **Vibe2Ship Hackathon 2026**
 
 ---
 
 <div align="center">
-
-### ⭐ If you like this project, don't forget to star the repository!
 
 **FlowMind — Execute Smarter. Finish Earlier.**
 

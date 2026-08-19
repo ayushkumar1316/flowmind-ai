@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronRight, LogOut, User, Settings, Sliders } from "lucide-react";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 
 /**
  * SidebarProfile
@@ -28,8 +28,8 @@ function SidebarProfile() {
 
   // Sync data dynamically from Context
   const displayData = {
-    name: profile?.displayName || user?.displayName || "User",
-    role: displayRole || "", 
+    name: profile?.profile?.name || profile?.displayName || user?.displayName || "User",
+    role: displayRole || profile?.profile?.occupation || "",
     photoURL: profile?.photoURL || user?.photoURL || null,
   };
 

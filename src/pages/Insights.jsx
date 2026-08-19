@@ -4,12 +4,37 @@ import { useNavigate } from "react-router-dom";
 import { AreaChart, Area, BarChart, Bar, Cell, LabelList, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { 
     Brain, CheckCircle2, TrendingUp, Target, ShieldAlert, Activity, 
-    Zap, ArrowRight, ShieldCheck, AlertTriangle, Flame, 
+    Zap, ArrowRight, ShieldCheck, Flame, 
     Award, Sparkles, BarChart3, Lock 
 } from "lucide-react";
 
-import { usePlan } from "../contexts/PlanContext";
-import { useAuth } from "../contexts/AuthContext";
+import { usePlan } from "../hooks/usePlan";
+import { useAuth } from "../hooks/useAuth";
+
+// --- TOOLTIP COMPONENTS (defined outside to avoid React warnings) ---
+const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="bg-white border border-[#E9DFD3] p-3 rounded-xl shadow-[0_8px_24px_rgba(80,62,38,0.08)]">
+                <p className="text-gray-400 text-[10px] font-black uppercase tracking-wider mb-1">{label}</p>
+                <p className="text-purple-600 font-black text-sm">{`${payload[0].value}% Confidence`}</p>
+            </div>
+        );
+    }
+    return null;
+};
+
+const BarTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="bg-gray-900 border border-gray-800 px-3 py-2 rounded-lg shadow-xl">
+                <p className="text-gray-400 text-[10px] font-black uppercase tracking-wider mb-0.5">{label}</p>
+                <p className="text-white font-black text-xs">{`${payload[0].value}% Productivity`}</p>
+            </div>
+        );
+    }
+    return null;
+};
 
 // --- ANIMATED COUNTER COMPONENT ---
 const AnimatedCounter = ({ value, duration = 1000, suffix = "" }) => {
@@ -66,14 +91,12 @@ function Insights() {
     const navigate = useNavigate();
     const { plan, loadingPlan } = usePlan();
     const { profile } = useAuth();
-    const [currentTime, setCurrentTime] = useState("");
-
-    useEffect(() => {
+    const [currentTime] = useState(() => {
         const hour = new Date().getHours();
-        if (hour < 12) setCurrentTime("GOOD MORNING");
-        else if (hour < 18) setCurrentTime("GOOD AFTERNOON");
-        else setCurrentTime("GOOD EVENING");
-    }, []);
+        if (hour < 12) return "GOOD MORNING";
+        if (hour < 18) return "GOOD AFTERNOON";
+        return "GOOD EVENING";
+    });
 
     // =====================================
     // CORE DERIVATION ENGINE
@@ -266,30 +289,6 @@ function Insights() {
         if (status === "warn") return <span className="px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-100 shadow-sm">At Risk</span>;
         return <span className="px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-red-50 text-red-600 border border-red-100 shadow-sm">Critical</span>;
     }, []);
-
-    const CustomTooltip = ({ active, payload, label }) => {
-        if (active && payload && payload.length) {
-            return (
-                <div className="bg-white border border-[#E9DFD3] p-3 rounded-xl shadow-[0_8px_24px_rgba(80,62,38,0.08)]">
-                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-wider mb-1">{label}</p>
-                    <p className="text-purple-600 font-black text-sm">{`${payload[0].value}% Confidence`}</p>
-                </div>
-            );
-        }
-        return null;
-    };
-
-    const BarTooltip = ({ active, payload, label }) => {
-        if (active && payload && payload.length) {
-            return (
-                <div className="bg-gray-900 border border-gray-800 px-3 py-2 rounded-lg shadow-xl">
-                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-wider mb-0.5">{label}</p>
-                    <p className="text-white font-black text-xs">{`${payload[0].value}% Productivity`}</p>
-                </div>
-            );
-        }
-        return null;
-    };
 
     const cardStyle = "bg-white rounded-[24px] border border-[#E9DFD3] shadow-[0_14px_40px_rgba(80,62,38,0.03)] p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_45px_rgba(80,62,38,0.06)] flex flex-col justify-between";
 

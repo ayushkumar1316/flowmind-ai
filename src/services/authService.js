@@ -180,6 +180,32 @@ export const completeUserSetup = async (uid, profileData) => {
     }
 };
 
+export const updateProfile = async (uid, profileData) => {
+    try {
+        const userRef = doc(db, "users", uid);
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+        const locale = navigator.language || "en-US";
+
+        await setDoc(userRef, {
+            timezone: timezone,
+            locale: locale,
+            profile: {
+                name: profileData.name,
+                occupation: profileData.occupation,
+                goal: profileData.goal,
+                availableHours: Number(profileData.availableHours),
+                preferredWorkTime: profileData.preferredWorkTime,
+                updatedAt: serverTimestamp()
+            }
+        }, { merge: true });
+
+        return true;
+    } catch (error) {
+        console.error("Error updating profile:", error);
+        throw error;
+    }
+};
+
 export const recordTaskCompletionStreak = async (uid, currentStats = {}) => {
     if (!uid) return currentStats;
 

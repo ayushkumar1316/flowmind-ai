@@ -1,8 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { PlanProvider } from "./contexts/PlanContext";
+import { AuthProvider } from "./contexts/AuthProvider";
+import { useAuth } from "./hooks/useAuth";
+import { PlanProvider } from "./contexts/PlanProvider";
 
 import AuthPage from "./pages/AuthPage";
 import SetupPage from "./pages/SetupPage";
