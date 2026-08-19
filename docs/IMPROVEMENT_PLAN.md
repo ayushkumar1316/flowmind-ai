@@ -61,13 +61,13 @@
 
 | Task | Files | Status | Effort |
 |------|-------|--------|--------|
-| Create `SaveMyDayModal.jsx` with hours input + AI triage UI | New file | ☐ | 6h |
-| Add "Save My Day" button to Dashboard header | `Dashboard.jsx` | ☐ | 2h |
-| Wire `generateSaveMyDay(availableHours, currentPlan)` from `gemini.js` | `Dashboard.jsx` → `gemini.js` | ☐ | 4h |
-| Apply triage result → update TaskBoard + Dashboard plan | `TaskBoard.jsx`, `PlanContext` | ☐ | 6h |
-| Implement `recalculateAnalysis()` call on task completion | `Dashboard.jsx`, `TaskBoard.jsx`, `gemini.js` | ☐ | 8h |
-| Add recovery prompt when confidence drops below threshold | `Dashboard.jsx` | ☐ | 4h |
-| Server-authoritative Success Chance (not local animation) | `Dashboard.jsx`, `PlanContext` | ☐ | 2h |
+| Create `SaveMyDayModal.jsx` with hours input + AI triage UI | `src/components/SaveMyDayModal.jsx` | ✅ Done | 6h |
+| Add "Save My Day" button to Dashboard header | `Dashboard.jsx` | ✅ Done | 2h |
+| Wire `generateSaveMyDay(availableHours, currentPlan)` from `gemini.js` | `SaveMyDayModal.jsx` → `gemini.js` | ✅ Done | 4h |
+| Apply triage result → update TaskBoard + Dashboard plan | `Dashboard.jsx`, `PlanContext` | ✅ Done | 6h |
+| Implement `recalculateAnalysis()` call on task completion | `Dashboard.jsx`, `gemini.js` | ✅ Done (Dashboard) | 8h |
+| Add recovery prompt when confidence drops below threshold | `Dashboard.jsx` | ✅ Done | 4h |
+| Server-authoritative Success Chance (not local animation) | `Dashboard.jsx`, `PlanContext` | ✅ Done | 2h |
 
 #### **1B: Unified Plan State** — *8h*
 
@@ -77,10 +77,10 @@
 | Remove duplicate `subscribeToPlan` in TaskBoard | `TaskBoard.jsx` | ✅ Done | 2h |
 
 **Exit Criteria:**
-- [ ] Save My Day works end-to-end
-- [ ] Completing tasks triggers AI reanalysis
-- [ ] Confidence score updates from server, not local animation
-- [ ] All pages consume single plan state
+- [x] Save My Day works end-to-end
+- [x] Completing tasks triggers AI reanalysis (Dashboard)
+- [x] Confidence score updates from server, not local animation (Dashboard)
+- [x] All pages consume single plan state
 
 ---
 

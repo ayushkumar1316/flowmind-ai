@@ -2,9 +2,11 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { savePlan } from "../services/firebaseService";
 import { recordTaskCompletionStreak } from "../services/authService";
-import { Brain, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { recalculateAnalysis } from "../services/gemini";
+import { Brain, CalendarDays, ChevronLeft, ChevronRight, Zap } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { usePlan } from "../hooks/usePlan";
+import SaveMyDayModal from "../components/SaveMyDayModal";
 import {
     buildCalendarMeta,
     buildTaskMetrics,
@@ -68,6 +70,9 @@ function Dashboard() {
     const navigate = useNavigate();
     const { user, profile, updateProfileStats } = useAuth();
     const { plan, loadingPlan: isLoading } = usePlan();
+
+    const [showSaveMyDay, setShowSaveMyDay] = useState(false);
+    const [recoveryPrompt, setRecoveryPrompt] = useState(null);
 
     useEffect(() => {
         const updateClock = () => {
@@ -200,16 +205,34 @@ function Dashboard() {
                 };
             });
 
-            const total = updatedTasks.length;
-            const completed = updatedTasks.filter((task, index) => normalizeDashboardTask(task, index).status === "Completed").length;
-            const nextProgress = total === 0 ? 0 : Math.round((completed / total) * 100);
+            const completedTasks = updatedTasks.filter((t) => {
+                const n = normalizeDashboardTask(t, 0);
+                return n.status === "Completed";
+            }).map((t) => normalizeDashboardTask(t, 0).title);
+
+            const remainingTasks = updatedTasks.filter((t) => {
+                const n = normalizeDashboardTask(t, 0);
+                return n.status !== "Completed";
+            }).map((t) => normalizeDashboardTask(t, 0).title);
+
+            const analysis = await recalculateAnalysis(completedTasks, remainingTasks, plan);
 
             const didSave = await savePlan({
                 ...plan,
                 taskBoardTasks: updatedTasks,
-                confidenceScore: nextProgress,
+                confidenceScore: analysis.confidenceScore,
+                riskLevel: analysis.riskLevel,
+                riskReason: analysis.riskReason,
+                agentMessage: analysis.agentMessage,
             });
             if (!didSave) throw new Error("Plan save was not accepted");
+
+            if (analysis.confidenceScore <= 40) {
+                setRecoveryPrompt({
+                    score: analysis.confidenceScore,
+                    message: analysis.agentMessage,
+                });
+            }
 
             if (user?.uid) {
                 const nextStats = await recordTaskCompletionStreak(user.uid, profile?.stats || {});
@@ -227,6 +250,81 @@ function Dashboard() {
             setSyncingTaskId(null);
         }
     }, [plan, syncingTaskId, tasks, user, profile, updateProfileStats]);
+
+    const handleApplyTriage = useCallback((triageResult) => {
+        if (!plan || !triageResult) return;
+
+        const doNowTasks = (triageResult.strictlyDoToday || []).map((item, i) => {
+            const existing = (plan.taskBoardTasks || []).find(
+                (t) => (t.title || t.task || "").toLowerCase() === (item.task || "").toLowerCase()
+            );
+            if (existing) {
+                return { ...existing, status: "To Do", completed: false, deadlineDays: 1 };
+            }
+            return {
+                id: `smd-${Date.now()}-${i}`,
+                title: item.task,
+                status: "To Do",
+                completed: false,
+                priority: "HIGH",
+                deadlineDays: 1,
+                estimatedTime: item.hours ? `${item.hours} Hours` : "1 Hour",
+                timeBlock: "Focus Block",
+                category: "Save My Day",
+                isRepeating: false,
+                targetCount: 1,
+                currentCount: 0,
+                createdAt: new Date().toISOString(),
+            };
+        });
+
+        const postponedTasks = (triageResult.postponeTomorrow || []).map((item, i) => {
+            const existing = (plan.taskBoardTasks || []).find(
+                (t) => (t.title || t.task || "").toLowerCase() === (item.task || "").toLowerCase()
+            );
+            if (existing) {
+                return { ...existing, deadlineDays: 2 };
+            }
+            return {
+                id: `smd-post-${Date.now()}-${i}`,
+                title: item.task,
+                status: "To Do",
+                completed: false,
+                priority: "MEDIUM",
+                deadlineDays: 2,
+                estimatedTime: "1 Hour",
+                timeBlock: "Focus Block",
+                category: "Save My Day",
+                isRepeating: false,
+                targetCount: 1,
+                currentCount: 0,
+                createdAt: new Date().toISOString(),
+            };
+        });
+
+        const dropTitles = (triageResult.dropCancel || []).map((item) =>
+            (item.task || "").toLowerCase()
+        );
+
+        const untouchedTasks = (plan.taskBoardTasks || []).filter((t) => {
+            const title = (t.title || "").toLowerCase();
+            const isDoNow = doNowTasks.some((d) => d.title.toLowerCase() === title);
+            const isPostponed = postponedTasks.some((p) => p.title.toLowerCase() === title);
+            const isDropped = dropTitles.includes(title);
+            return !isDoNow && !isPostponed && !isDropped;
+        });
+
+        const newTasks = [...doNowTasks, ...postponedTasks, ...untouchedTasks];
+
+        savePlan({
+            ...plan,
+            taskBoardTasks: newTasks,
+            saveMyDayResult: triageResult,
+            saveMyDayAt: new Date().toISOString(),
+        });
+
+        setShowSaveMyDay(false);
+    }, [plan]);
 
     if (isLoading) {
         return (
@@ -434,6 +532,13 @@ function Dashboard() {
                         </div>
 
                         <div className="flex w-full flex-wrap items-center gap-2.5 mt-3 md:mt-0 md:w-auto">
+                            <button
+                                onClick={() => setShowSaveMyDay(true)}
+                                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-[0_8px_24px_rgba(147,51,234,0.25)] hover:bg-purple-500 transition-all active:scale-95"
+                            >
+                                <Zap className="w-3.5 h-3.5" />
+                                Save My Day
+                            </button>
                             <div className="min-w-0 max-w-full bg-white/95 px-3.5 py-1.5 rounded-xl border border-[#E9DFD3] shadow-[0_8px_24px_rgba(80,62,38,0.06)] flex items-center gap-3">
                                 <div className="flex items-center gap-1.5 text-gray-900 font-bold text-xs tracking-tight">
                                     <span className="text-sm text-purple-600">🕒</span>
@@ -768,6 +873,42 @@ function Dashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* Recovery Prompt */}
+            {recoveryPrompt && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[160] max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-amber-200 p-5 animate-fade-in-up">
+                    <div className="flex items-start gap-3">
+                        <span className="text-2xl">⚠️</span>
+                        <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-black text-gray-900 mb-1">Confidence Dropped to {recoveryPrompt.score}%</h4>
+                            <p className="text-xs text-gray-600 leading-relaxed">{recoveryPrompt.message}</p>
+                            <div className="flex items-center gap-2 mt-3">
+                                <button
+                                    onClick={() => { setShowSaveMyDay(true); setRecoveryPrompt(null); }}
+                                    className="px-4 py-1.5 bg-purple-600 text-white rounded-lg text-[11px] font-bold shadow-sm hover:bg-purple-500 transition-all active:scale-95"
+                                >
+                                    Save My Day
+                                </button>
+                                <button
+                                    onClick={() => setRecoveryPrompt(null)}
+                                    className="px-4 py-1.5 text-gray-500 hover:text-gray-700 text-[11px] font-bold transition-colors"
+                                >
+                                    Dismiss
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Save My Day Modal */}
+            {showSaveMyDay && (
+                <SaveMyDayModal
+                    plan={plan}
+                    onClose={() => setShowSaveMyDay(false)}
+                    onApply={handleApplyTriage}
+                />
+            )}
         </>
     );
 }
