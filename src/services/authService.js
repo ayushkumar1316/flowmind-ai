@@ -1,8 +1,10 @@
 import { 
     signInWithPopup, 
     GoogleAuthProvider, 
+    EmailAuthProvider,
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword,
+    linkWithCredential,
     onAuthStateChanged,
     signOut,
     signInAnonymously
@@ -231,4 +233,62 @@ export const recordTaskCompletionStreak = async (uid, currentStats = {}) => {
 
     await setDoc(doc(db, "users", uid), { stats: nextStats }, { merge: true });
     return nextStats;
+};
+
+// ============================================
+// GUEST → ACCOUNT UPGRADE
+// ============================================
+
+export const linkEmailToGuest = async (user, email, password) => {
+    try {
+        const credential = EmailAuthProvider.credential(email, password);
+        const linkedUser = await linkWithCredential(user, credential);
+        
+        await setDoc(doc(db, "users", linkedUser.user.uid), {
+            email: email,
+            isGuest: false,
+            accountType: "email",
+            linkedAt: serverTimestamp(),
+        }, { merge: true });
+
+        return linkedUser.user;
+    } catch (error) {
+        console.error("Failed to link email:", error);
+        throw error;
+    }
+};
+
+export const linkGoogleToGuest = async (user) => {
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const linkedUser = await linkWithCredential(user, credential);
+
+        await setDoc(doc(db, "users", linkedUser.user.uid), {
+            email: linkedUser.user.email,
+            displayName: linkedUser.user.displayName,
+            photoURL: linkedUser.user.photoURL,
+            isGuest: false,
+            accountType: "google",
+            linkedAt: serverTimestamp(),
+        }, { merge: true });
+
+        return linkedUser.user;
+    } catch (error) {
+        console.error("Failed to link Google:", error);
+        throw error;
+    }
+};
+
+export const deleteAccount = async (user) => {
+    try {
+        const userRef = doc(db, "users", user.uid);
+        await setDoc(userRef, { deleted: true, deletedAt: serverTimestamp() }, { merge: true });
+        
+        await user.delete();
+        return true;
+    } catch (error) {
+        console.error("Failed to delete account:", error);
+        throw error;
+    }
 };

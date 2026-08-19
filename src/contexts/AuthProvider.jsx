@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AuthContext } from "./AuthContext";
 import { checkAuthState, getUserProfile, checkAndUpdateStreak, logoutUser } from "../services/authService";
 
@@ -30,6 +30,23 @@ export const AuthProvider = ({ children }) => {
         return () => unsubscribe();
     }, []);
 
+    const refreshProfile = useCallback(async () => {
+        if (!user?.uid) return;
+        try {
+            const userProfile = await getUserProfile(user.uid);
+            if (userProfile) {
+                const updatedStats = await checkAndUpdateStreak(user.uid, userProfile.stats);
+                setProfile({ ...userProfile, stats: updatedStats });
+            }
+        } catch (error) {
+            console.error("Failed to refresh profile:", error);
+        }
+    }, [user]);
+
+    const updateProfileLocal = useCallback((updates) => {
+        setProfile((current) => current ? { ...current, ...updates } : current);
+    }, []);
+
     const logout = async () => {
         await logoutUser();
         setUser(null);
@@ -41,7 +58,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, profile, loading, logout, updateProfileStats }}>
+        <AuthContext.Provider value={{ user, profile, loading, logout, updateProfileStats, refreshProfile, updateProfileLocal }}>
             {children}
         </AuthContext.Provider>
     );
