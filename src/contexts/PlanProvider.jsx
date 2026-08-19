@@ -1,11 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { PlanContext } from "./PlanContext";
 import { subscribeToPlan, savePlan } from "../services/firebaseService";
+import { migrateExistingData, hasMigrated } from "../services/migrationService";
 
 export const PlanProvider = ({ children }) => {
     const [plan, setPlan] = useState(null);
     const [loadingPlan, setLoadingPlan] = useState(true);
     const planRef = useRef(null);
+    const migratedRef = useRef(false);
 
     useEffect(() => {
         const unsubscribe = subscribeToPlan((realtimePlan) => {
@@ -19,6 +21,18 @@ export const PlanProvider = ({ children }) => {
         };
     }, []);
 
+    useEffect(() => {
+        if (migratedRef.current || hasMigrated() || !plan || loadingPlan) return;
+        migratedRef.current = true;
+        const uid = plan.userId || plan.uid || null;
+        if (!uid) return;
+        migrateExistingData(uid, plan).then((result) => {
+            if (result.migrated) {
+                console.log(`Migration complete: ${result.count} tasks migrated`);
+            }
+        });
+    }, [plan, loadingPlan]);
+
     const updatePlan = useCallback(async (updates) => {
         setPlan((prev) => ({ ...prev, ...updates }));
         planRef.current = { ...planRef.current, ...updates };
@@ -31,14 +45,9 @@ export const PlanProvider = ({ children }) => {
     }, []);
 
     const syncTasks = useCallback(async (updatedTasks) => {
-        const completedCount = updatedTasks.filter((t) => t.status === "Completed").length;
-        const total = updatedTasks.length;
-        const progress = total === 0 ? 0 : Math.round((completedCount / total) * 100);
-
         try {
             const didSave = await savePlan({
                 taskBoardTasks: updatedTasks,
-                confidenceScore: progress,
             });
             if (!didSave) throw new Error("Firebase rejected the task update");
         } catch (error) {
@@ -47,8 +56,30 @@ export const PlanProvider = ({ children }) => {
         }
     }, []);
 
+    const saveTemplate = useCallback(async (template) => {
+        try {
+            const currentTemplates = planRef.current?.taskTemplates || [];
+            const updatedTemplates = [...currentTemplates, { ...template, createdAt: Date.now() }];
+            await savePlan({ taskTemplates: updatedTemplates });
+        } catch (error) {
+            console.error("Failed to save template:", error);
+            throw error;
+        }
+    }, []);
+
+    const deleteTemplate = useCallback(async (templateId) => {
+        try {
+            const currentTemplates = planRef.current?.taskTemplates || [];
+            const updatedTemplates = currentTemplates.filter(t => t.id !== templateId);
+            await savePlan({ taskTemplates: updatedTemplates });
+        } catch (error) {
+            console.error("Failed to delete template:", error);
+            throw error;
+        }
+    }, []);
+
     return (
-        <PlanContext.Provider value={{ plan, loadingPlan, updatePlan, syncTasks }}>
+        <PlanContext.Provider value={{ plan, loadingPlan, updatePlan, syncTasks, saveTemplate, deleteTemplate }}>
             {children}
         </PlanContext.Provider>
     );
