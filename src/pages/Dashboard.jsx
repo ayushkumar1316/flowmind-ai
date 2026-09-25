@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { savePlan } from "../services/firebaseService";
 import { recordTaskCompletionStreak } from "../services/authService";
-import { recalculateAnalysis } from "../services/gemini";
+import { recalculateAnalysis } from "../services/llm/factory";
 import { logTaskCompletion, logConfidenceChange } from "../services/historyService";
 import { Brain, CalendarDays, ChevronLeft, ChevronRight, Zap } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";

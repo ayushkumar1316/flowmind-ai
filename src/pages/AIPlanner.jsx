@@ -1,7 +1,7 @@
 // src/pages/AIPlanner.jsx
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { generatePlan } from "../services/gemini";
+import { generatePlan } from "../services/llm/factory";
 import { savePlan } from "../services/firebaseService";
 import { Brain } from "lucide-react";
 

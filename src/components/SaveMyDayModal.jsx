@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { Clock, Zap, ChevronRight, AlertTriangle, CheckCircle2, XCircle, Loader2 } from "lucide-react";
-import { generateSaveMyDay } from "../services/gemini";
+import { generateSaveMyDay } from "../services/llm/factory";
 
 export default function SaveMyDayModal({ plan, onClose, onApply }) {
     const [hours, setHours] = useState("");
