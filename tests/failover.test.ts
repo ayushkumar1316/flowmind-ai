@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { validatePlan, validateSaveMyDay, validateAnalysis, setProviderChain, restoreProviderChain, runWithFailover } from '../src/services/llm/factory.js';
 import { ProviderError } from '../src/services/llm/providers/gemini.js';
 

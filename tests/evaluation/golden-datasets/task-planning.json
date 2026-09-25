@@ -1,0 +1,653 @@
+[
+  {
+    "id": "plan-01",
+    "input": "I have a placement interview in 15 days. Need to practice DSA arrays, sorting, and logical reasoning. I have 3 hours today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineAnalysisHasTaskName": true,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-02",
+    "input": "I need to complete my AQI project frontend integration by tomorrow. Available for 5 hours. Also have a math assignment due in 3 days.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-03",
+    "input": "Update my resume and apply for 3 frontend internships today. I have 4 hours available.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-04",
+    "input": "I want to start learning Spanish and go for a 5k run today. I have 2 hours of free time.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-05",
+    "input": "I have a Deloitte OA in 2 days. Need to solve 20 DSA problems, practice 10 logical reasoning questions, and review my project documentation.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-06",
+    "input": "Submit my college assignment by Friday, study for 3 chapters of OS, and go to the gym at 5pm. Available for 6 hours today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-07",
+    "input": "I need to prepare for tomorrow's presentation on Cloud Computing. Also need to finish my web dev project landing page. I have 4 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-08",
+    "input": "Apply for 5 internships on LinkedIn, read 20 pages of Atomic Habits, and water plants 3 times today. I have 3 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-09",
+    "input": "I have 3 assignments due this week, a quiz on Monday, and I need to prepare my resume for placements. Only 2 hours today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-10",
+    "input": "I have a hackathon in 3 days. Need to build a React frontend, set up a Node.js backend, and design the database schema. Available 7 hours today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-11",
+    "input": "Review my code for the FlowMind project, fix 3 bugs, deploy to Firebase, and write a README. 4 hours available.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-12",
+    "input": "I need to study for my end semester exams starting next week. Cover 5 chapters of DBMS, 3 chapters of OS, and solve 15 Leetcode problems. 6 hours today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-13",
+    "input": "I have a job interview tomorrow at TCS. Need to revise DSA patterns, practice system design basics, and review my project. 5 hours left today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-14",
+    "input": "Complete my AQI testing suite, write unit tests, update documentation, and fix CSS issues on mobile. 3 hours available.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-15",
+    "input": "I need to finish my portfolio website, write 2 blog posts, and apply for 10 remote jobs. Available 8 hours today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-16",
+    "input": "Prepare for my vivas next week. Review DBMS, OS, and CN notes. Also need to submit my project report by Thursday. 4 hours today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-17",
+    "input": "I have a presentation on AI/ML tomorrow. Need to make slides, practice speaking, and prepare Q&A answers. Available 3 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-18",
+    "input": "Build a REST API with Express.js, connect it to MongoDB, and write 5 API tests. 6 hours today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-19",
+    "input": "I have 2 hours. Just want to review my resume and do 5 easy leetcode problems.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-20",
+    "input": "I need to submit my lab record by tomorrow, prepare for a quiz on Friday, and also learn React hooks today. 5 hours available.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-21",
+    "input": "I have a GATE exam in 2 months. Today I need to study 3 topics from DSA, solve 10 previous year questions, and revise DBMS notes. 7 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-22",
+    "input": "Deploy my React app to Vercel, fix the responsive design, and send a follow-up email to my recruiter. 2 hours left.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-23",
+    "input": "Study 5 chapters of Computer Networks, solve 10 DSA array problems, and go for a 30 min walk. 4 hours available.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-24",
+    "input": "I need to write my SOP for MS applications, research 5 universities, and complete my university assignment. 6 hours today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-25",
+    "input": "I have a group project meeting at 4pm. Before that, finish my part of the frontend, test 3 features, and update the project tracker. 3 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-26",
+    "input": "I want to learn TypeScript today. Complete 1 tutorial, build a small project, and solve 3 TypeScript challenges. 4 hours available.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-27",
+    "input": "I have a client call at 3pm. Need to prepare the demo, update the project report, and review the contract. 2 hours before the call.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-28",
+    "input": "I have a certification exam in 5 days. Need to study networking basics, do practice tests, and revise security concepts. 5 hours today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-29",
+    "input": "Clean my room, do laundry, grocery shop, and study for 3 hours. Available the whole day.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-30",
+    "input": "I need to write a technical blog post about React performance optimization. Also review PRs from my team. 3 hours available.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-31",
+    "input": "I have my final year project demo in 4 days. Need to fix the login bug, add dark mode, test all features, and prepare a demo video. 6 hours today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-32",
+    "input": "I want to run 5k today, meditate for 10 min, read 20 pages, and call my parents. I have 2 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-33",
+    "input": "Prepare for my coding interview tomorrow at Amazon. Solve 5 medium DSA problems, review system design notes, and practice behavioral questions. 5 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-34",
+    "input": "I have 1 hour. Just solve 3 easy Leetcode problems.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-35",
+    "input": "I need to update my GitHub profile, push 3 projects, write READMEs for each, and apply for 5 internships. 4 hours available.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-36",
+    "input": "I have my semester exams starting Monday. Today I need to cover 4 chapters of Data Structures, 2 chapters of Digital Electronics, and solve 10 previous year questions. 7 hours today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-37",
+    "input": "I need to design the database schema for my project, create 3 Figma mockups, and write the project proposal. 5 hours available.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-38",
+    "input": "I have 3 hours. Fix the CSS bug in my navbar, add search functionality, and deploy to Firebase Hosting.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-39",
+    "input": "I need to prepare for my GD round tomorrow. Research 3 current affairs topics, practice speaking for 30 min, and prepare 5 STAR method answers. 3 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-40",
+    "input": "I have a coding competition in 2 hours. Solve 3 easy problems first, then 2 medium ones. I also need to review my notes on graph algorithms.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-41",
+    "input": "I need to complete my AWS Cloud Practitioner certification study. Cover 3 modules today, take a practice test, and review weak areas. 4 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-42",
+    "input": "I have a design review tomorrow. Need to finalize the UI mockups, prepare a 5-minute pitch, and update the project timeline. 3 hours today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-43",
+    "input": "I have 5 hours. Build a todo app with React, add authentication with Firebase, and style it with Tailwind CSS.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-44",
+    "input": "I need to prepare for my OOPs viva. Review inheritance, polymorphism, and encapsulation. Also practice 5 code examples. 2 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-45",
+    "input": "I have a paper presentation on Machine Learning tomorrow. Review the paper, prepare slides, and practice the explanation. 4 hours available.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-46",
+    "input": "I need to fix 5 bugs in my current project, write 2 unit tests, and do a code review for my teammate. 3 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-47",
+    "input": "I want to learn Docker today. Install Docker, follow 1 tutorial, and containerize my existing Node.js app. 4 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-48",
+    "input": "I have my semester end project submission in 2 days. Need to fix 3 major bugs, write the documentation, and prepare a demo. 6 hours today.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-49",
+    "input": "I need to study for my GRE exam. Practice 20 verbal questions, 10 quantitative problems, and review 50 vocabulary words. 5 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  },
+  {
+    "id": "plan-50",
+    "input": "I have a client deadline in 3 hours. Need to finish the landing page, optimize images, and push to production. Only 3 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "upcomingTasks", "deadlineAnalysis", "recommendedFocus", "estimatedHoursNeeded", "strictlyDoToday", "postponeTomorrow", "dropCancel"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 12,
+      "agentMessageMinLength": 15,
+      "deadlineDaysRange": [0, 30]
+    }
+  }
+]

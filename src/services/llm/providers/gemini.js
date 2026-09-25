@@ -20,7 +20,7 @@ import {
     RECALCULATE_SYSTEM_INSTRUCTION
 } from "../sharedSchema.js";
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const GEMINI_API_KEY = (typeof import.meta !== "undefined" && import.meta.env?.VITE_GEMINI_API_KEY) || process.env?.VITE_GEMINI_API_KEY || process.env?.GEMINI_API_KEY || "";
 
 /**
  * Extract a useful status code from a Gemini SDK error so the factory can

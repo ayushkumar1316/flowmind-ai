@@ -1,0 +1,115 @@
+[
+  {
+    "id": "edge-01",
+    "input": "a",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "agentMessageMinLength": 5
+    }
+  },
+  {
+    "id": "edge-02",
+    "input": "do everything I need to do today before tomorrow",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "agentMessageMinLength": 5
+    }
+  },
+  {
+    "id": "edge-03",
+    "input": "I need to study, code, exercise, meditate, read, cook, clean, call mom, apply for jobs, build portfolio, learn React, solve DSA, finish assignment, prepare for interview, and learn guitar. I have 1 hour.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "strictlyDoToday"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 15,
+      "agentMessageMinLength": 10
+    }
+  },
+  {
+    "id": "edge-04",
+    "input": "I have 0.5 hours. Just review my resume.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "agentMessageMinLength": 5
+    }
+  },
+  {
+    "id": "edge-05",
+    "input": "I have 24 hours available today. I want to study DSA, build a project, go to the gym, cook dinner, and watch a movie.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "agentMessageMinLength": 5
+    }
+  },
+  {
+    "id": "edge-06",
+    "input": "help",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "agentMessageMinLength": 5
+    }
+  },
+  {
+    "id": "edge-07",
+    "input": "I have 2 hours and 30 minutes. Need to finish my lab report and study for the exam tomorrow.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "agentMessageMinLength": 5
+    }
+  },
+  {
+    "id": "edge-08",
+    "input": "Nothing urgent today. Maybe just chill and do some light reading.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "agentMessageMinLength": 5
+    }
+  },
+  {
+    "id": "edge-09",
+    "input": "I have a flight at 6pm and need to pack, submit my assignment by 2pm, and call my bank. Available 4 hours.",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage", "strictlyDoToday"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 10,
+      "agentMessageMinLength": 5
+    }
+  },
+  {
+    "id": "edge-10",
+    "input": "study dsa solve 50 problems revise os complete project deploy app go gym read book call friend meditate learn spanish write blog apply internships fix bugs update resume prepare interview clean room cook dinner do laundry",
+    "assertions": {
+      "mustHave": ["todayPlan", "confidenceScore", "riskLevel", "riskReason", "agentMessage"],
+      "confidenceScoreRange": [0, 100],
+      "riskLevelValid": ["Low", "Moderate", "High"],
+      "todayPlanMinLength": 1,
+      "todayPlanMaxLength": 20,
+      "agentMessageMinLength": 5
+    }
+  }
+]

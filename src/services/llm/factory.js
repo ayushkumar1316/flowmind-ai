@@ -339,3 +339,21 @@ export function restoreProviderChain() {
 }
 
 export { runWithFailover };
+
+// --- Auto-record metrics (browser only, safe no-op in Node) ---
+try {
+    if (typeof localStorage !== "undefined" && typeof window !== "undefined") {
+        const { recordRequest } = await import("./metricsTracker.js");
+        onProviderEvent((event) => {
+            if (event.type === "request_complete") {
+                recordRequest({
+                    method: event.method,
+                    provider: event.provider,
+                    latencyMs: event.latencyMs,
+                    usedFallback: event.usedFallback,
+                    outcome: event.usedFallback ? "fallback" : "success"
+                });
+            }
+        });
+    }
+} catch { /* metrics tracker not available, fine */ }
