@@ -5,6 +5,7 @@ import { logTaskCompletion, logConfidenceChange } from "../services/historyServi
 import { useAuth } from "../hooks/useAuth";
 import { usePlan } from "../hooks/usePlan";
 import { getDisplayName, getProductivityStreak } from "../utils/dashboardMetrics";
+import SaveMyDayModal from "../components/SaveMyDayModal";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -178,6 +179,8 @@ function TaskBoard() {
     // Toast & Celebration States
     const [celebration, setCelebration] = useState(null);
     const [deletedTaskInfo, setDeletedTaskInfo] = useState(null);
+    const [showSaveMyDay, setShowSaveMyDay] = useState(false);
+    const [smdPreTasks, setSmdPreTasks] = useState(null); // backup before triage
     const deleteTimeoutRef = useRef(null);
     const focusTimerRef = useRef(null);
     const { user, profile, updateProfileStats } = useAuth();
@@ -546,6 +549,142 @@ function TaskBoard() {
     }, [tasks, syncPlanUpdates]);
 
     // =====================================
+    // SAVE MY DAY — EMERGENCY TRIAGE APPLY
+    // =====================================
+    /**
+     * Match an AI triage entry to a real task by fuzzy title comparison.
+     * AI often paraphrases ("Revise logical reasoning" vs "Revise LR section"),
+     * so we use token overlap rather than exact matching.
+     */
+    const matchTask = useCallback((entryName, candidates) => {
+        const target = String(entryName || "").toLowerCase().trim();
+        if (!target) return null;
+
+        const targetTokens = target.split(/\s+/).filter((t) => t.length > 2);
+
+        let best = null;
+        let bestScore = 0;
+
+        candidates.forEach((task) => {
+            const title = String(task.title || "").toLowerCase();
+            if (!title) return;
+
+            // Exact substring either way is the strongest signal.
+            if (title.includes(target) || target.includes(title)) {
+                best = task;
+                bestScore = 1000;
+                return;
+            }
+
+            // Otherwise score by shared meaningful tokens.
+            const titleTokens = title.split(/\s+/).filter((t) => t.length > 2);
+            const shared = targetTokens.filter((t) => titleTokens.some((tt) => tt.includes(t) || t.includes(tt)));
+            const score = targetTokens.length > 0 ? shared.length / targetTokens.length : 0;
+            if (score > bestScore) {
+                bestScore = score;
+                best = task;
+            }
+        });
+
+        // Require at least half the tokens to overlap, else treat as no match.
+        return bestScore >= 0.5 ? best : null;
+    }, []);
+
+    const handleApplySaveMyDay = useCallback((triage) => {
+        // Snapshot for undo
+        setSmdPreTasks([...tasks]);
+
+        const doNow = triage?.strictlyDoToday || [];
+        const postpone = triage?.postponeTomorrow || [];
+        const drop = triage?.dropCancel || [];
+
+        const matchedDoNow = doNow
+            .map((entry) => matchTask(entry.task, tasks))
+            .filter(Boolean);
+        const matchedPostpone = postpone
+            .map((entry) => matchTask(entry.task, tasks))
+            .filter(Boolean);
+        const matchedDrop = drop
+            .map((entry) => matchTask(entry.task, tasks))
+            .filter(Boolean);
+
+        const doNowIds = new Set(matchedDoNow.map((t) => t.id));
+        const postponeIds = new Set(matchedPostpone.map((t) => t.id));
+        const dropIds = new Set(matchedDrop.map((t) => t.id));
+
+        // Annotate: AI-recommended order + hours + reason, so the UI can show
+        // the coaching context without needing a second lookup.
+        const hoursById = new Map();
+        doNow.forEach((entry) => {
+            const matched = matchTask(entry.task, tasks);
+            if (matched) hoursById.set(matched.id, entry.hours);
+        });
+        const reasonById = new Map();
+        [...doNow, ...postpone, ...drop].forEach((entry) => {
+            const matched = matchTask(entry.task, tasks);
+            if (matched) reasonById.set(matched.id, entry.reason);
+        });
+
+        const decorated = tasks.map((task) => {
+            if (doNowIds.has(task.id)) {
+                return {
+                    ...task,
+                    smdStatus: "doNow",
+                    smdHours: hoursById.get(task.id) ?? null,
+                    smdReason: reasonById.get(task.id) ?? null,
+                    priority: "HIGH",
+                };
+            }
+            if (postponeIds.has(task.id)) {
+                return { ...task, smdStatus: "postpone", smdReason: reasonById.get(task.id) ?? null, priority: "LOW" };
+            }
+            if (dropIds.has(task.id)) {
+                return { ...task, smdStatus: "drop", smdReason: reasonById.get(task.id) ?? null, priority: "LOW" };
+            }
+            return { ...task, smdStatus: "later", smdHours: null, smdReason: reasonById.get(task.id) ?? null };
+        });
+
+        // Reorder: do-now first (in AI order), then the rest, postpone low, drop last.
+        const orderIndex = new Map(doNow.map((entry, i) => [matchTask(entry.task, tasks)?.id, i]));
+        const ordered = [...decorated].sort((a, b) => {
+            const rank = (t) => {
+                if (t.smdStatus === "doNow") return 0;
+                if (t.smdStatus === "later") return 1;
+                if (t.smdStatus === "postpone") return 2;
+                if (t.smdStatus === "drop") return 3;
+                return 1;
+            };
+            const rA = rank(a);
+            const rB = rank(b);
+            if (rA !== rB) return rA - rB;
+            if (rA === 0) {
+                const iA = orderIndex.get(a.id);
+                const iB = orderIndex.get(b.id);
+                if (iA !== undefined && iB !== undefined) return iA - iB;
+            }
+            return 0;
+        });
+
+        setLocalTasks(ordered);
+        setTaskOrder(ordered.filter((t) => t.status !== "Completed").map((t) => t.id));
+        syncPlanUpdates(ordered);
+
+        setShowSaveMyDay(false);
+        setToast({ type: "success", message: "Your day is re-triaged. Undo available for 10s." });
+        setTimeout(() => setToast(null), 10000);
+    }, [tasks, matchTask, syncPlanUpdates]);
+
+    const handleUndoSaveMyDay = useCallback(() => {
+        if (!smdPreTasks) return;
+        setLocalTasks(smdPreTasks);
+        setTaskOrder(smdPreTasks.filter((t) => t.status !== "Completed").map((t) => t.id));
+        syncPlanUpdates(smdPreTasks);
+        setSmdPreTasks(null);
+        setToast({ type: "success", message: "Triage reverted." });
+        setTimeout(() => setToast(null), 3000);
+    }, [smdPreTasks, syncPlanUpdates]);
+
+    // =====================================
     // DRAG-TO-REORDER HANDLER
     // =====================================
     const handleDragEnd = useCallback((event) => {
@@ -788,17 +927,26 @@ function TaskBoard() {
                     <div className="flex flex-col lg:flex-row gap-6">
                         
                         {/* LEFT COLUMN: Active Execution */}
-                        <div className="w-full lg:w-3/4 flex flex-col gap-4">
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-3">
-                                    <h3 className="text-lg font-black tracking-tight text-gray-950 dark:text-gray-100 flex items-center gap-2">
-                                        🎯 Active Execution
-                                    </h3>
-                                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded-md border border-gray-100 dark:border-gray-700 hidden sm:inline-block">Sorted by: Priority • Deadline</span>
-                                </div>
-                            </div>
+                                                <div className="w-full lg:w-3/4 flex flex-col gap-4">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <h3 className="text-lg font-black tracking-tight text-gray-950 dark:text-gray-100 flex items-center gap-2">
+                                                                🎯 Active Execution
+                                                            </h3>
+                                                            <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded-md border border-gray-100 dark:border-gray-700 hidden sm:inline-block">Sorted by: Priority • Deadline</span>
+                                                        </div>
+                                                        {activeTasks.length > 0 && (
+                                                            <button
+                                                                onClick={() => setShowSaveMyDay(true)}
+                                                                className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-red-500 text-white hover:bg-red-600 active:scale-95 transition-colors flex items-center gap-1.5 shadow-sm"
+                                                                aria-label="Save My Day — Emergency triage"
+                                                            >
+                                                                <span className="text-base">🆘</span> Save My Day
+                                                            </button>
+                                                        )}
+                                                    </div>
 
-                            {/* Tag Filter Bar */}
+                                                    {/* Tag Filter Bar */}
                             {allTags.length > 0 && (
                                 <div className="flex flex-wrap gap-2 mb-3">
                                     <button
@@ -1318,9 +1466,29 @@ function TaskBoard() {
                     </div>
 
                 </div>
+
+                {/* Save My Day Modal */}
+                {showSaveMyDay && (
+                    <SaveMyDayModal
+                        plan={plan}
+                        onApply={handleApplySaveMyDay}
+                        onClose={() => setShowSaveMyDay(false)}
+                    />
+                )}
+
+                {/* Save My Day Undo */}
+                {smdPreTasks && (
+                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[150] bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl animate-fade-in-up flex items-center gap-4">
+                        <span className="text-sm font-semibold text-gray-200">Day triaged by AI</span>
+                        <button onClick={handleUndoSaveMyDay} className="text-xs font-black text-red-400 hover:text-red-300 transition-colors uppercase tracking-wider">Undo</button>
+                        <button onClick={() => setSmdPreTasks(null)} className="text-xs font-bold text-gray-400 hover:text-gray-200 transition-colors">Dismiss</button>
+                    </div>
+                )}
             </div>
         </>
     );
 }
+
+
 
 export default TaskBoard;

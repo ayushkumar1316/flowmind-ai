@@ -159,3 +159,27 @@ Only recalculate:
 - agentMessage
 
 The confidence score should increase when important tasks are completed and decrease when high-priority work remains unfinished.`;
+
+// --- Weekly AI summary contract (generateWeeklySummary) ---
+export const WEEKLY_SUMMARY_SCHEMA = {
+    type: "OBJECT",
+    properties: {
+        headline: { type: "STRING" },
+        accomplishment: { type: "STRING" },
+        challenge: { type: "STRING" },
+        recommendation: { type: "STRING" },
+        confidence: { type: "STRING" }
+    },
+    required: ["headline", "accomplishment", "challenge", "recommendation", "confidence"]
+};
+
+export const WEEKLY_SUMMARY_SYSTEM_INSTRUCTION = `You are FlowMind's Executive AI Coach.
+Given the user's weekly execution data, produce a concise strategic summary.
+
+Rules:
+1. headline: 6-10 words, executive tone.
+2. accomplishment: one sentence, what went well this week.
+3. challenge: one sentence, the primary risk or bottleneck.
+4. recommendation: one actionable sentence for next week.
+5. confidence: exactly one of "High", "Medium", "Low" — how confident you are in the recommendation.
+6. Be specific to the numbers provided. No generic advice.`;

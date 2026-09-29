@@ -10,7 +10,11 @@ import {
 
 import { usePlan } from "../hooks/usePlan";
 import { useAuth } from "../hooks/useAuth";
-import { 
+import WeeklySummaryCard from "../components/insights/WeeklySummaryCard";
+import VelocityTracker from "../components/insights/VelocityTracker";
+import FocusHeatmap from "../components/insights/FocusHeatmap";
+import FocusDNABadge from "../components/insights/FocusDNABadge";
+import {
     getRecentConfidenceHistory, 
     getProductivityByDay, 
     getCompletionStats,
@@ -110,6 +114,15 @@ function Insights() {
     const [completionStats, setCompletionStats] = useState({ totalCompleted: 0, dailyAverage: 0, streakDays: 0 });
     const [isExporting, setIsExporting] = useState(false);
     const [dateRange, setDateRange] = useState("week");
+
+    // Monday of the current week (used by the Weekly AI Summary card).
+    const weekMonday = useMemo(() => {
+        const d = new Date();
+        const dayOfWeek = (d.getDay() + 6) % 7;
+        d.setDate(d.getDate() - dayOfWeek);
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }, []);
 
     useEffect(() => {
         if (!user?.uid) return;
@@ -740,6 +753,28 @@ function Insights() {
                                 </ResponsiveContainer>
                             </div>
                         </div>
+                    </div>
+
+                    {/* 4B. PLAN 5 — ADVANCED INSIGHTS: Weekly AI + Velocity + Focus DNA + Heatmap */}
+                    <div className="space-y-6 animate-fade-up">
+                        {/* Weekly AI Summary — full width */}
+                        <WeeklySummaryCard
+                            userId={user?.uid}
+                            weekStartDate={weekMonday}
+                        />
+
+                        {/* Velocity + Focus DNA */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                            <div className="lg:col-span-7">
+                                <VelocityTracker userId={user?.uid} />
+                            </div>
+                            <div className="lg:col-span-5">
+                                <FocusDNABadge dna={insightsData.intelligence.dna} />
+                            </div>
+                        </div>
+
+                        {/* Focus Heatmap — full width */}
+                        <FocusHeatmap userId={user?.uid} />
                     </div>
 
                     {/* 5. MERGED EXECUTIVE REVIEW CARD + NEXT AI ACTION */}

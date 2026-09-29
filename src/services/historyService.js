@@ -250,3 +250,111 @@ export const exportToCSV = (insightsData) => {
 
     return lines.join("\n");
 };
+
+// =====================================
+// WEEKLY AI INSIGHT GENERATION
+// =====================================
+
+/**
+ * Generate an AI-powered weekly execution insight.
+ * Calls the FastAPI backend (or falls back to local heuristic).
+ */
+export const generateWeeklyAIInsight = async (userId, weekStartDate) => {
+    if (!userId) return null;
+
+    try {
+        const weekEndDate = new Date(weekStartDate);
+        weekEndDate.setDate(weekEndDate.getDate() + 6);
+
+        const [confidenceHistory, completionStats, productivityByDay] = await Promise.all([
+            getRecentConfidenceHistory(userId, 7),
+            getCompletionStats(userId, 7),
+            getProductivityByDay(userId)
+        ]);
+
+        const totalTasks = completionStats.totalCompleted + 7;
+        const completedTasks = completionStats.totalCompleted;
+        const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+        const avgConfidence = confidenceHistory.length > 0
+            ? Math.round(confidenceHistory.reduce((sum, entry) => sum + entry.score, 0) / confidenceHistory.length)
+            : 0;
+
+        const weeklyChange = productivityByDay.length > 1
+            ? productivityByDay[6].value - productivityByDay[0].value
+            : productivityByDay[0]?.value || 0;
+
+        // Try backend first, fall back to local heuristic
+        const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5001";
+        let aiInsight = null;
+
+        try {
+            const res = await fetch(`${apiBase}/api/insights/weekly`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userId,
+                    weekStartDate: weekStartDate.toISOString().split("T")[0],
+                    confidenceHistory,
+                    completionStats,
+                    productivityByDay
+                })
+            });
+            if (res.ok) {
+                aiInsight = await res.json();
+            }
+        } catch {
+            console.warn("Backend weekly insight unavailable, using heuristic");
+        }
+
+        if (aiInsight) {
+            return aiInsight;
+        }
+
+        // Local heuristic fallback
+        const peakDay = productivityByDay.length > 0
+            ? productivityByDay.reduce((best, day) => day.value > best.value ? day : best, productivityByDay[0]).day
+            : "Unknown";
+
+        let riskLevel = "medium";
+        let trend = "stable";
+        if (completionRate >= 80 && avgConfidence >= 75) {
+            riskLevel = "low";
+            trend = weeklyChange >= 0 ? "up" : "stable";
+        } else if (completionRate < 40 || avgConfidence < 40) {
+            riskLevel = "high";
+            trend = "down";
+        } else {
+            riskLevel = "medium";
+            trend = weeklyChange >= 0 ? "up" : "down";
+        }
+
+        return {
+            summary: `You completed ${completionRate}% of your weekly tasks with an average confidence of ${avgConfidence}%. Your execution is ${riskLevel === "low" ? "strong and sustainable" : riskLevel === "high" ? "at risk and needs attention" : "moderate and improving"}.`,
+            riskLevel,
+            recommendation: riskLevel === "high"
+                ? "Focus on high-priority tasks first and reduce your task backlog."
+                : "Maintain your current pace and protect your peak productivity time.",
+            prediction: trend === "up"
+                ? "Next week looks strong — keep the momentum going."
+                : "Next week may require extra planning — schedule buffer time for unexpected delays.",
+            motivation: riskLevel === "high"
+                ? "Recovery is a skill. Every task you finish builds it."
+                : "Consistency beats intensity. Keep going.",
+            confidenceScore: avgConfidence,
+            peakProductivityDay: peakDay,
+            trend
+        };
+    } catch (error) {
+        console.error("Failed to generate weekly insight:", error);
+        return {
+            summary: "Unable to generate insight. Check your connection and try again.",
+            riskLevel: "unknown",
+            recommendation: "Review your task list and ensure critical tasks are scheduled.",
+            prediction: "Your execution will improve with consistent planning.",
+            motivation: "Small steps lead to great achievements.",
+            confidenceScore: 0,
+            peakProductivityDay: "Unknown",
+            trend: "stable"
+        };
+    }
+};
