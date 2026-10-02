@@ -11,7 +11,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Load .env manually
 import { readFileSync } from "node:fs";
 try {
-    const envContent = readFileSync(join(__dirname, "../.env"), "utf-8");
+    // Project root is two levels up from tests/evaluation/
+    const rootDir = join(__dirname, "../../");
+    const envContent = readFileSync(join(rootDir, ".env"), "utf-8");
     envContent.split("\n").forEach((line) => {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith("#")) return;

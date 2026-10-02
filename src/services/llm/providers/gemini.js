@@ -20,7 +20,19 @@ import {
     RECALCULATE_SYSTEM_INSTRUCTION
 } from "../sharedSchema.js";
 
-const GEMINI_API_KEY = (typeof import.meta !== "undefined" && import.meta.env?.VITE_GEMINI_API_KEY) || process.env?.VITE_GEMINI_API_KEY || process.env?.GEMINI_API_KEY || "";
+/**
+ * Read an API key lazily, at call time, not at module load time.
+ *
+ * WHY: In Node (eval harness, CI) `process.env` is populated by the .env
+ * parser AFTER this module is imported. A module-level constant would
+ * capture the empty string forever, making every provider look
+ * "unconfigured" and silently returning fallbacks.
+ */
+const readKey = (envName, bareName) => {
+    const fromImportMeta =
+        typeof import.meta !== "undefined" ? import.meta.env?.[envName] : undefined;
+    return fromImportMeta || process.env?.[envName] || process.env?.[bareName] || "";
+};
 
 /**
  * Extract a useful status code from a Gemini SDK error so the factory can
@@ -61,17 +73,18 @@ export class GeminiProvider {
     }
 
     isConfigured() {
-        return Boolean(GEMINI_API_KEY);
+        return Boolean(readKey("VITE_GEMINI_API_KEY", "GEMINI_API_KEY"));
     }
 
     _getModel(systemInstruction, generationConfig) {
-        if (!GEMINI_API_KEY) {
+        const KEY = readKey("VITE_GEMINI_API_KEY", "GEMINI_API_KEY");
+        if (!KEY) {
             throw new ProviderError("VITE_GEMINI_API_KEY is not configured.", {
                 provider: this.name,
                 retryable: false,
             });
         }
-        if (!this.genAI) this.genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        if (!this.genAI) this.genAI = new GoogleGenerativeAI(KEY);
         return this.genAI.getGenerativeModel({
             model: this.model,
             generationConfig: {

@@ -21,7 +21,16 @@ import {
 } from "../sharedSchema.js";
 import { ProviderError } from "./gemini.js";
 
-const GROQ_API_KEY = (typeof import.meta !== "undefined" && import.meta.env?.VITE_GROQ_API_KEY) || process.env?.VITE_GROQ_API_KEY || process.env?.GROQ_API_KEY || "";
+/**
+ * Read an API key lazily, at call time, not at module load time.
+ * (See the identical note in gemini.js — in Node, process.env is
+ * populated after this module is imported.)
+ */
+const readKey = (envName, bareName) => {
+    const fromImportMeta =
+        typeof import.meta !== "undefined" ? import.meta.env?.[envName] : undefined;
+    return fromImportMeta || process.env?.[envName] || process.env?.[bareName] || "";
+};
 
 /**
  * Convert our canonical schema object to a plain JSON schema object
@@ -72,14 +81,15 @@ export class GroqProvider {
     }
 
     isConfigured() {
-        return Boolean(GROQ_API_KEY);
+        return Boolean(readKey("VITE_GROQ_API_KEY", "GROQ_API_KEY"));
     }
 
     /**
      * Generic Groq chat completion call.
      */
     async _chatCompletion(systemInstruction, userMessage, responseFormat) {
-        if (!GROQ_API_KEY) {
+        const KEY = readKey("VITE_GROQ_API_KEY", "GROQ_API_KEY");
+        if (!KEY) {
             throw new ProviderError("VITE_GROQ_API_KEY is not configured.", {
                 provider: this.name,
                 retryable: false,
@@ -92,7 +102,7 @@ export class GroqProvider {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${GROQ_API_KEY}`
+                    "Authorization": `Bearer ${KEY}`
                 },
                 body: JSON.stringify({
                     model: this.model,
